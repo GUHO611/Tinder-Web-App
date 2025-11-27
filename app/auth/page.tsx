@@ -1,36 +1,57 @@
 "use client"
+import { useAuth } from "@/contexts/auth-context";
 import { createClient } from "@/lib/supabase/client";
-import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 
 function AuthPage() {
     const [isSignUp, setIsSignUp] = useState<boolean>(false);
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
-    const [name, setName] = useState<string>("");
+    // const [name, setName] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
     const supabase = createClient();
+    const { user, loading: authLoading } = useAuth()
+    const router = useRouter()
 
+    // đưa người dùng ra khỏi trang đăng nhập khi đã đã đang nhập thành công
+    useEffect(() => {
+        if (user && !authLoading) {
+            router.push("/")
+        }
+    }, [user, authLoading, router])
 
     async function handleAuth(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
         setError("");
-
+        if (isSignUp && password !== confirmPassword) {
+            setError("Mật khẩu xác nhận không khớp");
+            setLoading(false);
+            return;
+        }
         try {
             if (isSignUp) {
                 const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
+                    // options: {
+                    //     data: {
+                    //         name,
+                    //     },
+                    // },
                 });
                 if (error) throw error;
+                //Khi đăng ký xong: User được tạo -> Nhưng Session (phiên đăng nhập) chưa có
                 if (data.user && !data.session) {
                     setError("Vui lòng kiểm tra email của bạn để xác nhận tài khoản");
                     return;
                 }
 
             } else {
+                // Gửi email/pass -> Supabase trả về token -> Lưu vào Cookie (do createClient đã cấu hình)
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
@@ -82,6 +103,7 @@ function AuthPage() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white"
                                     placeholder="Enter your email"
+                                    autoComplete="email"
                                 />
                             </div>
 
@@ -100,13 +122,14 @@ function AuthPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white"
                                     placeholder="Enter your password"
+                                    autoComplete="password"
                                 />
                             </div>
                         </>
                     ) : (
                         <>
                             {/* Form đăng ký */}
-                            <div>
+                            {/* <div>
                                 <label
                                     htmlFor="name"
                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -122,7 +145,7 @@ function AuthPage() {
                                     className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white"
                                     placeholder="Enter your name"
                                 />
-                            </div>
+                            </div> */}
 
                             <div>
                                 <label
