@@ -20,25 +20,25 @@ export default function Navbar() {
                                 href="/matches"
                                 className="text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 font-medium transition-colors duration-200"
                             >
-                                Discover
+                                Khám Phá
                             </Link>
                             <Link
                                 href="/matches/list"
                                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors duration-200"
                             >
-                                Matches
+                                Ghép Đôi
                             </Link>
                             <Link
                                 href="/chat"
                                 className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 font-medium transition-colors duration-200"
                             >
-                                Messages
+                                Tin Nhắn
                             </Link>
                             <Link
                                 href="/profile"
                                 className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 font-medium transition-colors duration-200"
                             >
-                                Profile
+                                Hồ Sơ
                             </Link>
                         </div>
                     )}
