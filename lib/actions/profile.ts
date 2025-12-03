@@ -1,8 +1,40 @@
 "use server";
 
-import { createClient } from "../supabase/sever"; // Lưu ý đường dẫn đúng là 'server' chứ không phải 'sever'
+import { createClient } from "../supabase/sever";
+
+// --- 1. DEFINITIONS & INTERFACES ---
+
+export interface Hobby {
+    id: string; // UUID trong Supabase là string
+    name: string;
+    icon: string;
+    category: string;
+}
+
+// Kiểu dữ liệu trả về từ bảng user_hobbies khi join
+interface UserHobbyJoin {
+    hobbies: Hobby | null; // Join có thể null nếu dữ liệu rác, nên để null cho an toàn
+}
 
 export interface UserProfile {
+    id: string;
+    full_name?: string;
+    username?: string;
+    bio?: string;
+    gender?: string;
+    birthdate?: string;
+    avatar_url?: string;
+    display_address?: string;
+    preferences?: Record<string, unknown>; // JSONB chuẩn
+    is_profile_completed?: boolean;
+    latitude?: number | null;
+    longitude?: number | null;
+    hobbiesIds?: string[]; // Danh sách ID để Frontend dùng cho Form
+    hobbies?: Hobby[];     // Danh sách Object đầy đủ để hiển thị (nếu cần)
+}
+
+// Payload để update bảng users (không bao gồm hobbies)
+interface UserTableUpdate {
     full_name?: string;
     username?: string;
     bio?: string;
@@ -12,23 +44,42 @@ export interface UserProfile {
     display_address?: string;
     preferences?: Record<string, unknown>;
     is_profile_completed?: boolean;
-    // THÊM 2 DÒNG NÀY ĐỂ HẾT LỖI:
-    latitude?: number | null;
-    longitude?: number | null;
+    updated_at?: string;
+    location?: string; // PostGIS string
 }
-// 1. LẤY PROFILE + SỞ THÍCH + VỊ TRÍ
-export async function getCurrentUserProfile() {
+
+// --- 2. SERVER ACTIONS ---
+
+// LẤY DANH SÁCH TẤT CẢ SỞ THÍCH (Master Data)
+export async function getAllHobbies(): Promise<Hobby[]> {
+    const supabase = await createClient();
+    // console.log("---- Đang lấy danh sách hobbies... ----");
+    const { data, error } = await supabase
+        .from("hobbies")
+        .select("*")
+        .order("name");
+
+    if (error) {
+        //console.error("Error fetching hobbies:", error);
+        console.error("❌ Lỗi lấy hobbies:", error.message, error.details);
+        return [];
+    }
+    //console.log(`✅ Lấy thành công ${data.length} sở thích.`);
+    // Ép kiểu an toàn về Hobby[]
+    return data as Hobby[];
+}
+
+// LẤY PROFILE NGƯỜI DÙNG HIỆN TẠI
+export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     const supabase = await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-        return null;
-    }
+    if (!user) return null;
 
-    // Truy vấn dữ liệu, bao gồm cả cột location
+    // Truy vấn dữ liệu: Users + UserHobbies + Hobbies
     const { data, error } = await supabase
         .from("users")
         .select(`
@@ -40,70 +91,50 @@ export async function getCurrentUserProfile() {
         .eq("id", user.id)
         .single();
 
-    if (error) {
+    if (error || !data) {
         console.error("Error fetching profile:", error);
         return null;
     }
 
-    // TRANSFORM DỮ LIỆU:
-    // Supabase trả về dạng lồng nhau: user_hobbies: [{ hobbies: { id: 1, name: "A" } }]
-    // Chúng ta cần làm phẳng thành: hobbies: [{ id: 1, name: "A" }]
-    // Kiểu dữ liệu thực tế của một hobby
-    interface Hobby {
-        id: number;
-        name: string;
-    }
+    // --- XỬ LÝ HOBBIES (Type Safe) ---
+    // Ép kiểu data.user_hobbies về mảng UserHobbyJoin để TS hiểu cấu trúc
+    const rawUserHobbies = (data.user_hobbies || []) as unknown as UserHobbyJoin[];
 
-    // Kiểu dữ liệu của phần tử trong mảng user_hobbies
-    interface UserHobby {
-        hobbies: Hobby;
-    }
+    // Lọc lấy các hobby hợp lệ (không null)
+    const validHobbies = rawUserHobbies
+        .map((item) => item.hobbies)
+        .filter((h): h is Hobby => h !== null);
 
-    // Làm phẳng dữ liệu
-    const formattedHobbies: Hobby[] = Array.isArray(data.user_hobbies)
-        ? data.user_hobbies.map((item: UserHobby) => item.hobbies)
-        : [];
+    const hobbiesIds = validHobbies.map((h) => h.id);
 
     // --- XỬ LÝ VỊ TRÍ (PostGIS Parsing) ---
-    // PostGIS trả về location dưới dạng chuỗi WKT (VD: "POINT(105.85 21.02)") hoặc Hex.
-    // Supabase JS client thường trả về string dạng "POINT(long lat)" cho cột Geography.
-    let latitude = null;
-    let longitude = null;
+    let latitude: number | null = null;
+    let longitude: number | null = null;
 
     if (data.location && typeof data.location === "string") {
-        // Dùng Regex để tách số từ chuỗi "POINT(105.8 21.0)"
+        // Regex lấy số từ chuỗi "POINT(105.8 21.0)"
         const matches = data.location.match(/POINT\(([^ ]+) ([^ ]+)\)/);
         if (matches && matches.length === 3) {
-            longitude = parseFloat(matches[1]); // Số đầu tiên là Kinh độ (Long)
-            latitude = parseFloat(matches[2]);  // Số thứ hai là Vĩ độ (Lat)
+            longitude = parseFloat(matches[1]);
+            latitude = parseFloat(matches[2]);
         }
     }
 
-    // Loại bỏ các trường thừa
-    const { user_hobbies, location, ...profile } = data;
+    // --- RETURN ---
+    // Loại bỏ các trường thừa không cần thiết
+    const { user_hobbies, location, ...profileFields } = data;
 
     return {
-        ...profile,
-        hobbies: formattedHobbies,
-        latitude,  // Trả về riêng lẻ cho Frontend dễ dùng
+        ...profileFields,
+        preferences: profileFields.preferences as Record<string, unknown>, // Ép kiểu JSONB
+        latitude,
         longitude,
+        hobbiesIds,
+        hobbies: validHobbies,
     };
 }
-// Định nghĩa kiểu dữ liệu sẽ gửi xuống Database
-interface ProfileUpdatePayload {
-    full_name?: string;
-    username?: string;
-    bio?: string;
-    gender?: string;
-    birthdate?: string;
-    avatar_url?: string;
-    display_address?: string;
-    preferences?: Record<string, unknown>; // JSONB: Dùng Record thay vì any
-    is_profile_completed?: boolean;
-    updated_at?: string;
-    location?: string; // Đây là trường quan trọng (PostGIS string)
-}
-// 2. CẬP NHẬT PROFILE (Bao gồm PostGIS Location)
+
+// CẬP NHẬT PROFILE (Transaction logic: Update User -> Update Hobbies)
 export async function updateUserProfile(profileData: Partial<UserProfile>) {
     const supabase = await createClient();
 
@@ -115,45 +146,75 @@ export async function updateUserProfile(profileData: Partial<UserProfile>) {
         return { success: false, error: "User not authenticated" };
     }
 
-    // Chuẩn bị object update
-    const updates: ProfileUpdatePayload = {
+    // 1. CHUẨN BỊ DỮ LIỆU UPDATE BẢNG USERS
+    const userUpdates: UserTableUpdate = {
         full_name: profileData.full_name,
         username: profileData.username,
+        // Dùng undefined thay vì null để Supabase bỏ qua không update nếu không có giá trị
         bio: profileData.bio || undefined,
         gender: profileData.gender,
         birthdate: profileData.birthdate,
         avatar_url: profileData.avatar_url || undefined,
         display_address: profileData.display_address || undefined,
-        preferences: profileData.preferences as Record<string, unknown> | undefined,
+        preferences: profileData.preferences,
         is_profile_completed: profileData.is_profile_completed,
         updated_at: new Date().toISOString(),
     };
 
-    // --- XỬ LÝ POSTGIS LOCATION ---
-    // Kiểm tra kỹ type number cho lat/long
+    // Logic PostGIS: POINT(Long Lat)
     if (
-        typeof profileData.latitude === 'number' &&
-        typeof profileData.longitude === 'number'
+        typeof profileData.latitude === "number" &&
+        typeof profileData.longitude === "number"
     ) {
-        // Cú pháp PostGIS: POINT(Longitude Latitude)
-        updates.location = `POINT(${profileData.longitude} ${profileData.latitude})`;
+        userUpdates.location = `POINT(${profileData.longitude} ${profileData.latitude})`;
     }
 
-    // Thực hiện update
-    const { error } = await supabase
+    // 2. THỰC HIỆN UPDATE BẢNG USERS
+    const { error: userError } = await supabase
         .from("users")
-        .update(updates)
+        .update(userUpdates)
         .eq("id", user.id);
 
-    if (error) {
-        console.log("Supabase Update Error:", error);
-        return { success: false, error: error.message };
+    if (userError) {
+        console.error("User Update Error:", userError);
+        return { success: false, error: userError.message };
+    }
+
+    // 3. XỬ LÝ CẬP NHẬT SỞ THÍCH (Nếu có gửi lên)
+    if (profileData.hobbiesIds) {
+        // Bước A: Xóa toàn bộ sở thích cũ của user này
+        const { error: deleteError } = await supabase
+            .from("user_hobbies")
+            .delete()
+            .eq("user_id", user.id);
+
+        if (deleteError) {
+            console.error("Delete Hobbies Error:", deleteError);
+            return { success: false, error: "Failed to update hobbies" };
+        }
+
+        // Bước B: Thêm sở thích mới (nếu mảng không rỗng)
+        if (profileData.hobbiesIds.length > 0) {
+            const inserts = profileData.hobbiesIds.map((hobbyId) => ({
+                user_id: user.id,
+                hobby_id: hobbyId,
+            }));
+
+            const { error: insertError } = await supabase
+                .from("user_hobbies")
+                .insert(inserts);
+
+            if (insertError) {
+                console.error("Insert Hobbies Error:", insertError);
+                return { success: false, error: "Failed to save new hobbies" };
+            }
+        }
     }
 
     return { success: true };
 }
 
-// 3. UPLOAD ẢNH (Giữ nguyên)
+// 4. UPLOAD ẢNH
 export async function uploadProfilePhoto(file: File) {
     const supabase = await createClient();
 
