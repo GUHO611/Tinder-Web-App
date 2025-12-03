@@ -45,6 +45,12 @@ export interface UserProfile {
     created_at: string;
 }
 
+const GENDER_MAP: Record<string, string> = {
+    male: "Nam",
+    female: "Nữ",
+    other: "Khác",
+};
+
 export default function ProfilePage() {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -195,7 +201,13 @@ export default function ProfilePage() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Giới Tính</label>
-                                                <p className="text-gray-900 dark:text-white capitalize">{profile.gender}</p>
+                                                <p className="text-gray-900 dark:text-white capitalize">
+                                                    {profile.gender === "male"
+                                                        ? "Nam"
+                                                        : profile.gender === "female"
+                                                            ? "Nữ"
+                                                            : "Khác"}
+                                                </p>
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sinh Nhật</label>
@@ -218,13 +230,18 @@ export default function ProfilePage() {
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Khoảng cách</label>
-                                                <p className="text-gray-900 dark:text-white">Up to {profile.preferences?.distance} km</p>
+                                                <p className="text-gray-900 dark:text-white">lên đến  {profile.preferences?.distance} km</p>
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quan tâm đến</label>
                                                 <p className="text-gray-900 dark:text-white capitalize">
-                                                    {profile.preferences?.gender_preference?.join(", ") || "mọi người"}
-                                                </p>
+
+                                                    {/* Kiểm tra và ép kiểu ngay tại chỗ */}
+                                                    {(profile.preferences as { gender_preference?: string[] })?.gender_preference?.length
+                                                        ? (profile.preferences as { gender_preference: string[] }).gender_preference
+                                                            .map((g) => GENDER_MAP[g] || g)
+                                                            .join(", ")
+                                                        : "Mọi người"}                                                </p>
                                             </div>
                                         </div>
                                     </div>

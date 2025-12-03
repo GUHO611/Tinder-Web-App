@@ -4,10 +4,17 @@ import PhotoUpload from "@/componemts/PhotoUpload";
 import {
     getCurrentUserProfile,
     updateUserProfile,
+    getAllHobbies,
 } from "@/lib/actions/profile";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+
+interface Hobby {
+    id: string;
+    name: string;
+    icon: string;
+}
 // Định nghĩa kiểu dữ liệu cho Form để typescript không báo lỗi
 interface ProfileFormData {
     full_name: string;
@@ -19,6 +26,7 @@ interface ProfileFormData {
     display_address: string;
     latitude: number | null;
     longitude: number | null;
+    hobbiesIds: string[]; // Mảng chứa ID các sở thích đã chọn
 }
 
 export default function EditProfilePage() {
@@ -27,6 +35,9 @@ export default function EditProfilePage() {
     const [locationLoading, setLocationLoading] = useState(false); // Loading cho nút lấy vị trí
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+
+    // State cho danh sách sở thích
+    const [availableHobbies, setAvailableHobbies] = useState<Hobby[]>([]);
 
     const [formData, setFormData] = useState<ProfileFormData>({
         full_name: "",
@@ -38,12 +49,32 @@ export default function EditProfilePage() {
         display_address: "", // Thêm trường địa chỉ hiển thị
         latitude: null,      // Thêm tọa độ để lưu vào PostGIS
         longitude: null,
+        hobbiesIds: [],
     });
 
     useEffect(() => {
         async function loadProfile() {
             try {
+                console.log("🚀 Bắt đầu tải dữ liệu...");
+
+                // Tách ra chạy riêng để dễ debug từng cái
+                const hobbiesData = await getAllHobbies();
+                console.log("📦 Dữ liệu Hobbies nhận được ở Client:", hobbiesData);
+
                 const profileData = await getCurrentUserProfile();
+                console.log("👤 Dữ liệu Profile nhận được ở Client:", profileData);
+                console.log("📍 CLIENT - Tọa độ nhận được:", {
+                    lat: profileData?.latitude,
+                    lng: profileData?.longitude,
+                    full_profile: profileData // Log cả cục để xem chi tiết
+                });
+
+                // Cập nhật State
+                if (hobbiesData && hobbiesData.length > 0) {
+                    setAvailableHobbies(hobbiesData);
+                } else {
+                    console.warn("⚠️ Danh sách sở thích rỗng!");
+                }
                 if (profileData) {
                     setFormData({
                         full_name: profileData.full_name || "",
@@ -56,6 +87,7 @@ export default function EditProfilePage() {
                         // Lưu ý: Backend cần trả về lat/long từ cột location (PostGIS)
                         latitude: profileData.latitude || null,
                         longitude: profileData.longitude || null,
+                        hobbiesIds: profileData.hobbiesIds || [],
                     });
                 }
             } catch (err) {
@@ -68,11 +100,29 @@ export default function EditProfilePage() {
 
         loadProfile();
     }, []);
+    // --- XỬ LÝ SỞ THÍCH ---
+    const toggleHobby = (hobbyId: string) => {
+        setFormData((prev) => {
+            const exists = prev.hobbiesIds.includes(hobbyId);
+            let newHobbies;
+            if (exists) {
+                newHobbies = prev.hobbiesIds.filter((id) => id !== hobbyId);
+            } else {
+                if (prev.hobbiesIds.length >= 5) {
+                    alert("Bạn chỉ được chọn tối đa 5 sở thích!");
+                    return prev;
+                }
+                newHobbies = [...prev.hobbiesIds, hobbyId];
+            }
+            return { ...prev, hobbiesIds: newHobbies };
+        });
+    };
 
     // Hàm lấy vị trí từ trình duyệt
+    // --- LOGIC 2 & 3: XỬ LÝ VỊ TRÍ & REVERSE GEOCODING ---
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
-            setError("Geolocation is not supported by your browser");
+            setError("Trình duyệt không hỗ trợ định vị.");
             return;
         }
 
@@ -81,20 +131,36 @@ export default function EditProfilePage() {
             async (position) => {
                 const { latitude, longitude } = position.coords;
 
-                // Cập nhật tọa độ vào state
+                let addressName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+                // GỌI API REVERSE GEOCODING (MIỄN PHÍ TỪ OPENSTREETMAP)
+                try {
+                    const res = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+                    );
+                    const data = await res.json();
+
+                    if (data && data.address) {
+                        // Ưu tiên lấy Thành phố -> Thị xã -> Quận/Huyện
+                        const city = data.address.city || data.address.town || data.address.county || data.address.state;
+                        const country = data.address.country;
+                        addressName = `${city}, ${country}`;
+                    }
+                } catch (err) {
+                    console.error("Lỗi lấy tên địa điểm:", err);
+                    // Nếu lỗi API thì vẫn giữ tọa độ số
+                }
+
                 setFormData((prev) => ({
                     ...prev,
                     latitude,
                     longitude,
-                    // Tạm thời hiển thị tọa độ nếu chưa có API Geocoding
-                    // Trong thực tế, bạn nên gọi API (Google Maps/Mapbox) để đổi tọa độ thành tên đường
-                    display_address: prev.display_address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+                    display_address: addressName, // Tự động điền tên thành phố
                 }));
-
                 setLocationLoading(false);
             },
-            (error) => {
-                setError("Unable to retrieve your location. Please allow location access.");
+            (err) => {
+                setError("Vui lòng cấp quyền truy cập vị trí.");
                 setLocationLoading(false);
             }
         );
@@ -102,38 +168,34 @@ export default function EditProfilePage() {
 
     async function handleFormSubmit(e: React.FormEvent) {
         e.preventDefault();
-
         setSaving(true);
         setError(null);
 
+        // Kiểm tra logic vị trí
+        if (!formData.latitude || !formData.longitude) {
+            setError("Vui lòng nhấn 'Cập nhật vị trí' để chúng tôi tìm người phù hợp quanh bạn.");
+            setSaving(false);
+            return;
+        }
+
         try {
-            // Gửi dữ liệu đi. 
-            // Server Action (updateUserProfile) cần xử lý latitude/longitude 
-            // để chuyển thành cú pháp PostGIS: ST_SetSRID(ST_MakePoint(long, lat), 4326)
             const result = await updateUserProfile(formData);
             if (result.success) {
                 router.push("/profile");
             } else {
-                setError(result.error || "Failed to update profile.");
+                setError(result.error || "Lỗi cập nhật hồ sơ.");
             }
         } catch (err) {
-            setError("Failed to update profile.");
+            setError("Lỗi hệ thống.");
         } finally {
             setSaving(false);
         }
     }
 
-    function handleInputChange(
-        e: React.ChangeEvent<
-            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-        >
-    ) {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    }
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
 
     if (loading) {
         return (
@@ -141,7 +203,7 @@ export default function EditProfilePage() {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
                     <p className="mt-4 text-gray-600 dark:text-gray-400">
-                        Loading profile...
+                        Đang tải hồ sơ...
                     </p>
                 </div>
             </div>
@@ -153,10 +215,10 @@ export default function EditProfilePage() {
             <div className="container mx-auto px-4 py-8">
                 <header className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                        Edit Profile
+                        Chỉnh sửa hồ sơ
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400">
-                        Update your profile information
+                        Cập nhật thông tin cá nhân của bạn.
                     </p>
                 </header>
 
@@ -168,7 +230,7 @@ export default function EditProfilePage() {
                         {/* Avatar Section */}
                         <div className="mb-8">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-                                Profile Picture
+                                Ảnh Đại Diện
                             </label>
                             <div className="flex items-center space-x-6">
                                 <div className="relative">
@@ -192,10 +254,10 @@ export default function EditProfilePage() {
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                        Upload a new profile picture
+                                        Tải lên ảnh đại diện mới
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                                        JPG, PNG or GIF. Max 5MB.
+                                        JPG, PNG or GIF. Tối đa 5MB.
                                     </p>
                                 </div>
                             </div>
@@ -208,7 +270,7 @@ export default function EditProfilePage() {
                                     htmlFor="full_name"
                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                                 >
-                                    Full Name *
+                                    Tên đầy đủ *
                                 </label>
                                 <input
                                     type="text"
@@ -218,7 +280,7 @@ export default function EditProfilePage() {
                                     onChange={handleInputChange}
                                     required
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                                    placeholder="Enter your full name"
+                                    placeholder="Nhập tên đầy đủ của bạn"
                                 />
                             </div>
 
@@ -227,7 +289,7 @@ export default function EditProfilePage() {
                                     htmlFor="username"
                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                                 >
-                                    Username *
+                                    Tên người dùng *
                                 </label>
                                 <input
                                     type="text"
@@ -237,7 +299,7 @@ export default function EditProfilePage() {
                                     onChange={handleInputChange}
                                     required
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                                    placeholder="Choose a username"
+                                    placeholder="Chọn tên người dùng"
                                 />
                             </div>
                         </div>
@@ -248,7 +310,7 @@ export default function EditProfilePage() {
                                     htmlFor="gender"
                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                                 >
-                                    Gender *
+                                    Giới Tính *
                                 </label>
                                 <select
                                     id="gender"
@@ -258,9 +320,9 @@ export default function EditProfilePage() {
                                     required
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                                 >
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                    <option value="other">Other</option>
+                                    <option value="male">Nam</option>
+                                    <option value="female">Nữ</option>
+                                    <option value="other">Khác</option>
                                 </select>
                             </div>
 
@@ -269,7 +331,7 @@ export default function EditProfilePage() {
                                     htmlFor="birthdate"
                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                                 >
-                                    Birthday *
+                                    Sinh nhật *
                                 </label>
                                 <input
                                     type="date"
@@ -283,53 +345,90 @@ export default function EditProfilePage() {
                             </div>
                         </div>
 
-                        {/* LOCATION SECTION (New for PostGIS Schema) */}
-                        <div className="mb-6">
-                            <label
-                                htmlFor="display_address"
-                                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                            >
-                                Location (City, Country)
+                        {/* --- LOCATION SECTION (Đã tối ưu) --- */}
+                        <div className="mb-6 p-4 bg-blue-50 dark:bg-gray-700 rounded-lg border border-blue-100 dark:border-gray-600">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                📍 Vị trí của bạn (Bắt buộc để Matching)
                             </label>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
-                                    id="display_address"
-                                    name="display_address"
                                     value={formData.display_address}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g. Hanoi, Vietnam"
-                                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                    readOnly // QUAN TRỌNG: Không cho sửa tay để đảm bảo match đúng
+                                    placeholder="Chưa có vị trí"
+                                    className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg cursor-not-allowed text-gray-500 dark:text-gray-300"
                                 />
                                 <button
                                     type="button"
                                     onClick={handleGetLocation}
                                     disabled={locationLoading}
-                                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 whitespace-nowrap"
+                                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap shadow-md"
                                 >
-                                    {locationLoading ? (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                    )}
-                                    Get Current Location
+                                    {locationLoading ? "Đang tìm..." : "Cập nhật vị trí"}
                                 </button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                                Nhấp vào {"Lấy vị trí hiện tại"} để cập nhật vị trí chính xác của bạn để khớp hơn.
+                            <p className="text-xs text-gray-500 mt-2">
+                                * Hệ thống sử dụng GPS để tìm người ở gần bạn. Vui lòng nhấn nút Cập nhật.
                             </p>
                         </div>
 
+                        {/* --- SỞ THÍCH (HOBBIES) --- */}
+                        <div className="mb-8">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex justify-between">
+                                <span>Sở thích</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${formData.hobbiesIds.length === 5 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    Đã chọn: {formData.hobbiesIds.length}/5
+                                </span>
+                            </label>
+
+                            {availableHobbies.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {availableHobbies.map((hobby) => {
+                                        const isSelected = formData.hobbiesIds.includes(hobby.id);
+                                        return (
+                                            <button
+                                                key={hobby.id}
+                                                type="button"
+                                                onClick={() => toggleHobby(hobby.id)}
+                                                className={`
+                                  group relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border select-none
+                                  ${isSelected
+                                                        ? "bg-pink-500 text-white border-pink-500 shadow-md ring-2 ring-pink-200"
+                                                        : "bg-white text-gray-600 border-gray-200 hover:border-pink-300 hover:bg-pink-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+                                                    }
+                              `}
+                                            >
+                                                <span className="mr-1.5">{hobby.icon}</span>
+                                                {hobby.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                // Nếu tải xong mà vẫn không có dữ liệu -> Hiện thông báo khác, không hiện "Đang tải" nữa
+                                <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center">
+                                    <p className="text-sm text-gray-500 mb-2">
+                                        {loading ? "Đang tải danh sách..." : "Không tìm thấy danh sách sở thích."}
+                                    </p>
+                                    {!loading && (
+                                        <button
+                                            type="button"
+                                            onClick={() => window.location.reload()}
+                                            className="text-xs text-pink-500 underline"
+                                        >
+                                            Tải lại trang
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                         {/* Bio Section */}
                         <div className="mb-8">
                             <label
                                 htmlFor="bio"
                                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                             >
-                                About Me *
+                                Giới thiệu về tôi *
                             </label>
                             <textarea
                                 id="bio"
@@ -340,11 +439,11 @@ export default function EditProfilePage() {
                                 rows={4}
                                 maxLength={500}
                                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
-                                placeholder="Tell others about yourself..."
+                                placeholder="Hãy kể cho người khác nghe về bạn..."
                             />
                             <div className="flex justify-between mt-1">
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {formData.bio.length}/500 characters
+                                    {formData.bio.length}/500 từ
                                 </p>
                             </div>
                         </div>
@@ -363,14 +462,14 @@ export default function EditProfilePage() {
                                 onClick={() => router.back()}
                                 className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
                             >
-                                Cancel
+                                Quay lại
                             </button>
                             <button
                                 type="submit"
                                 disabled={saving}
                                 className="px-6 py-2 bg-gradient-to-r from-pink-500 to-red-500 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                             >
-                                {saving ? "Saving..." : "Save Changes"}
+                                {saving ? "Đang lưu..." : "Lưu thay đổi"}
                             </button>
                         </div>
                     </form>
