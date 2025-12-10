@@ -2,181 +2,255 @@
 
 import { getPotentialMatches, likeUser } from "@/lib/actions/matches";
 import { useEffect, useState } from "react";
-// QUAN TRỌNG: Import UserProfile từ file actions chuẩn
 import { UserProfile } from "@/lib/actions/profile";
 import { useRouter } from "next/navigation";
-import MatchCard from "@/componemts/MatchCard";
-import MatchButtons from "@/componemts/MatchButtons";
-import MatchNotification from "@/componemts/MatchNotification";
+import MatchCard from "@/components/MatchCard";
+import MatchButtons from "@/components/MatchButtons";
+import MatchNotification from "@/components/MatchNotification";
+import {
+    motion,
+    useMotionValue,
+    useTransform,
+    AnimatePresence,
+    PanInfo,
+} from "framer-motion";
 
 export default function MatchesPage() {
-    const [potentialMatches, setPotentialMatches] = useState<UserProfile[]>([]);
+    const router = useRouter();
+
+    const [matches, setMatches] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
-    const [currentIndex, setCurrentIndex] = useState(0);
 
     const [showMatchNotification, setShowMatchNotification] = useState(false);
     const [matchedUser, setMatchedUser] = useState<UserProfile | null>(null);
 
-    const router = useRouter();
+    const [exitDirection, setExitDirection] = useState<
+        "left" | "right" | null
+    >(null);
 
+    // Card bay x theo drag
+    const x = useMotionValue(0);
+    const rotate = useTransform(x, [-200, 200], [-22, 22]);
+    const likeOpacity = useTransform(x, [40, 150], [0, 1]);
+    const nopeOpacity = useTransform(x, [-40, -150], [0, 1]);
+
+    // Load list
     useEffect(() => {
-        async function loadUsers() {
+        (async () => {
             try {
-                // Hàm này đã được sửa ở bước trước để trả về đúng UserProfile[] kèm location/hobbies
-                const potentialMatchesData = await getPotentialMatches();
-                setPotentialMatches(potentialMatchesData);
-            } catch (error) {
-                console.error("Error loading matches:", error);
+                const data = await getPotentialMatches();
+                setMatches(data);
+            } catch (err) {
+                console.error(err);
             } finally {
                 setLoading(false);
             }
-        }
-
-        loadUsers();
+        })();
     }, []);
 
-    async function handleLike() {
-        if (currentIndex < potentialMatches.length) {
-            const likedUser = potentialMatches[currentIndex];
+    const topCard = matches[0];
+    const backCards = matches.slice(1, 3);
 
+    // Khi swipe bằng drag hoặc button
+    const triggerSwipe = async (dir: "left" | "right") => {
+        if (!topCard || exitDirection) return; // tránh gọi 2 lần
+
+        // BƯu tiên 1: Bay ngay lập tức (UX mượt)
+        setExitDirection(dir);
+
+        //Ưu tiên 2: Gọi API song song, không chờ
+        if (dir === "right") {
             try {
-                const result = await likeUser(likedUser.id);
-
+                const result = await likeUser(topCard.id);
                 if (result.isMatch && result.matchedUser) {
-                    // Ép kiểu về UserProfile chuẩn nếu cần thiết
                     setMatchedUser(result.matchedUser as UserProfile);
                     setShowMatchNotification(true);
                 }
-
-                // Chuyển sang người tiếp theo
-                setCurrentIndex((prev) => prev + 1);
             } catch (err) {
-                console.error(err);
+                console.error("Like failed:", err);
+                // Optional: Nếu API lỗi, vẫn cho bay card (offline-first UX)
+                // hoặc có thể hiện toast "Không thể thích"
             }
         }
-    }
+        // dir === "left" thì không cần gọi API gì cả → bay luôn
+    };
+    // Khi animation exit *kết thúc thật* → mới remove card
+    const handleExitComplete = () => {
+        setMatches((prev) => prev.slice(1)); // Luôn xóa phần tử đầu tiên
 
-    function handlePass() {
-        if (currentIndex < potentialMatches.length) {
-            setCurrentIndex((prev) => prev + 1);
+        setExitDirection(null);
+        x.set(0);
+    };
+    type DragEvent = MouseEvent | TouchEvent | PointerEvent;
+
+    const handleDragEnd = (e: DragEvent, info: PanInfo) => {
+        const threshold = 120;
+
+        if (info.offset.x > threshold) {
+            triggerSwipe("right");
+        } else if (info.offset.x < -threshold) {
+            triggerSwipe("left");
         }
-    }
+    };
 
-    function handleCloseMatchNotification() {
-        setShowMatchNotification(false);
-        setMatchedUser(null);
-    }
-
-    function handleStartChat() {
+    const handleStartChat = () => {
         if (matchedUser) {
             setShowMatchNotification(false);
             router.push(`/chat/${matchedUser.id}`);
         }
-    }
+    };
 
     if (loading) {
         return (
-            <div className="h-full min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">
-                        Đang tìm kiếm những người phù hợp...
-                    </p>
-                </div>
+            <div className="h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
             </div>
         );
     }
 
-    // Hết danh sách
-    if (currentIndex >= potentialMatches.length) {
+    if (!topCard) {
         return (
-            <div className="h-full min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-                <div className="text-center max-w-md mx-auto p-8">
-                    <div className="w-24 h-24 bg-gradient-to-r from-pink-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                        <span className="text-4xl">💕</span>
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                        Hết hồ sơ để hiển thị
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        Hãy quay lại sau để xem thêm, hoặc thử thay đổi sở thích của bạn!
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="bg-gradient-to-r from-pink-500 to-red-500 text-white font-semibold py-3 px-6 rounded-full hover:from-pink-600 hover:to-red-600 transition-all duration-200 shadow-md"
-                    >
-                        Làm mới
-                    </button>
-                </div>
+            <div className="h-screen flex flex-col items-center justify-center text-center p-8">
+                <div className="text-5xl">💕</div>
+                <h2 className="text-2xl font-bold mt-4">Hết hồ sơ</h2>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="mt-6 bg-white text-pink-500 py-3 px-8 rounded-full shadow"
+                >
+                    Làm mới
+                </button>
+
                 {showMatchNotification && matchedUser && (
                     <MatchNotification
                         match={matchedUser}
-                        onClose={handleCloseMatchNotification}
+                        onClose={() => setShowMatchNotification(false)}
                         onStartChat={handleStartChat}
                     />
                 )}
             </div>
         );
     }
-
-    const currentPotentialMatch = potentialMatches[currentIndex];
 
     return (
-        <div className="h-full min-h-screen overflow-y-auto bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 pb-20">
-            <div className="container mx-auto px-4 py-8">
-                <header className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <button
-                            onClick={() => router.back()}
-                            className="p-2 rounded-full hover:bg-white/20 dark:hover:bg-gray-700/50 transition-colors duration-200"
-                            title="Go back"
-                        >
-                            <svg
-                                className="w-6 h-6 text-gray-700 dark:text-gray-300"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+        <div className="h-screen overflow-hidden relative bg-gradient-to-br from-slate-100 to-pink-50 dark:from-gray-900 dark:to-slate-800 flex flex-col">
+
+            {/* HEADER */}
+            <header className="absolute top-0 w-full z-50 p-4 flex items-center justify-between">
+                <button
+                    onClick={() => router.back()}
+                    className="p-3 bg-white/50 dark:bg-black/50 backdrop-blur-md rounded-full"
+                >
+                    <svg
+                        className="w-6 h-6 text-gray-800 dark:text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M15 19l-7-7 7-7"
+                        />
+                    </svg>
+                </button>
+
+                <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-600">
+                    StreamMatch
+                </h1>
+                <div className="w-10" />
+            </header>
+
+            {/* CARD STACK */}
+            <div className="flex-1 flex items-center justify-center relative mt-10">
+                <div className="relative w-full max-w-md h-[600px] sm:h-[650px]">
+                    {/* BACK CARDS */}
+                    {backCards.map((user, i) => {
+                        const index = i + 1;
+
+                        return (
+                            <motion.div
+                                key={user.id}
+                                layoutId={`card-${user.id}`}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{
+                                    opacity: 0.6 - index * 0.1,
+                                    scale: 1 - index * 0.06,
+                                    y: index * 18,
+                                    rotate: -2 * index,
+                                }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 250,
+                                    damping: 22,
+                                }}
+                                className="absolute w-[90%] sm:w-[360px] h-full left-1/2 -translate-x-1/2"
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15 19l-7-7 7-7"
-                                />
-                            </svg>
-                        </button>
-                        <div className="flex-1" />
-                    </div>
+                                <MatchCard user={user} />
+                            </motion.div>
+                        );
+                    })}
 
-                    <div className="text-center">
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                            Khám Phá
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Hồ sơ thứ {currentIndex + 1} / {potentialMatches.length}
-                        </p>
-                    </div>
-                </header>
+                    {/* TOP CARD */}
+                    <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
+                        {topCard && (
+                            <motion.div
+                                key={topCard.id}
+                                layoutId={`card-${topCard.id}`}
+                                style={{ x, rotate }}
+                                drag="x"
+                                dragConstraints={{ left: 0, right: 0 }}
+                                onDragEnd={handleDragEnd}
+                                whileTap={{ scale: 0.97 }}
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{
+                                    x: exitDirection === "right" ? 800 : -800,
+                                    rotate: exitDirection === "right" ? 25 : -25,
+                                    opacity: 0,
+                                    transition: { duration: 0.28 },
+                                }}
+                                className="absolute w-[90%] sm:w-[360px] h-full left-1/2 -translate-x-1/2"
+                            >
+                                <MatchCard user={topCard} />
 
-                <div className="max-w-md mx-auto">
-                    {/* Card hiển thị thông tin người dùng */}
-                    <MatchCard user={currentPotentialMatch} />
+                                {/* LIKE LABEL */}
+                                <motion.div
+                                    style={{ opacity: likeOpacity }}
+                                    className="absolute top-10 left-6 border-4 border-green-500 text-green-500 font-bold text-4xl px-4 py-1 rounded-lg transform -rotate-12 z-50 bg-black/20 backdrop-blur-sm"
+                                >
+                                    THÍCH
+                                </motion.div>
 
-                    {/* Nút Like / Pass */}
-                    <div className="mt-8">
-                        <MatchButtons onLike={handleLike} onPass={handlePass} />
-                    </div>
+                                {/* NOPE LABEL */}
+                                <motion.div
+                                    style={{ opacity: nopeOpacity }}
+                                    className="absolute top-10 right-6 border-4 border-red-500 text-red-500 font-bold text-4xl px-4 py-1 rounded-lg transform rotate-12 z-50 bg-black/20 backdrop-blur-sm"
+                                >
+                                    KHÔNG
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-
-                {/* Popup khi Match thành công */}
-                {showMatchNotification && matchedUser && (
-                    <MatchNotification
-                        match={matchedUser}
-                        onClose={handleCloseMatchNotification}
-                        onStartChat={handleStartChat}
-                    />
-                )}
             </div>
+
+            {/* BUTTONS */}
+            <div className="pb-8 w-full max-w-sm mx-auto px-6 z-50">
+                <MatchButtons
+                    onLike={() => triggerSwipe("right")}
+                    onPass={() => triggerSwipe("left")}
+                    disabled={!topCard}
+                />
+            </div>
+
+            {showMatchNotification && matchedUser && (
+                <MatchNotification
+                    match={matchedUser}
+                    onClose={() => setShowMatchNotification(false)}
+                    onStartChat={handleStartChat}
+                />
+            )}
         </div>
     );
 }

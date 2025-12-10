@@ -3,6 +3,7 @@
 import { Hobby, UserProfile } from "@/lib/actions/profile"; // Import type chuẩn từ file profile
 import { createClient } from "../supabase/sever";
 
+
 // Cấu trúc Preferences trong JSONB
 interface UserPreferences {
     gender_preference?: string[];

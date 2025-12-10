@@ -12,9 +12,11 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.5",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.86.0",
+    "framer-motion": "^12.23.25",
     "gsap": "^3.13.0",
     "next": "16.0.4",
     "react": "19.2.0",

@@ -32,8 +32,11 @@ export default function MatchCard({ user }: { user: UserProfile }) {
                             <h2 className="text-3xl font-bold tracking-tight shadow-black drop-shadow-md">
                                 {user.full_name}
                             </h2>
+
+                        </div>
+                        <div>
                             <span className="text-2xl font-medium opacity-90">
-                                {user.birthdate ? calculateAge(user.birthdate) : ""}
+                                {user.birthdate ? calculateAge(user.birthdate) : ""} tuổi
                             </span>
                         </div>
 

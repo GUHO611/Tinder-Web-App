@@ -59,7 +59,7 @@ export default function MatchesListPage() {
                             <span className="text-4xl">💕</span>
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                            Chưa có tương hợp nào
+                            Chưa có ghép đôi nào
                         </h2>
                         <p className="text-gray-600 dark:text-gray-400 mb-6">
                             Hãy bắt đầu quẹt phải để tìm {'"nửa kia"'} của bạn!
@@ -94,7 +94,7 @@ export default function MatchesListPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-1">
                                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                                                    {match.full_name}, {match.birthdate ? calculateAge(match.birthdate) : "??"}
+                                                    {match.full_name}, {match.birthdate ? calculateAge(match.birthdate) : "??"} tuổi
                                                 </h3>
                                                 {/* Online Status Indicator (Optional - Giả lập) */}
                                                 <div className="flex-shrink-0 w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>

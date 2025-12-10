@@ -1,6 +1,6 @@
 "use client";
 
-import PhotoUpload from "@/componemts/PhotoUpload";
+import PhotoUpload from "@/components/PhotoUpload";
 import {
     getCurrentUserProfile,
     updateUserProfile,
