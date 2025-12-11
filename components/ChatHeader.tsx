@@ -9,6 +9,7 @@ interface ChatHeaderProps {
 }
 export default function ChatHeader({ user }: ChatHeaderProps) {
   const router = useRouter();
+  const defaultAvatarUrl = "default-avatar.png";
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -35,7 +36,7 @@ export default function ChatHeader({ user }: ChatHeaderProps) {
           <div className="flex items-center space-x-3">
             <div className="relative w-12 h-12 rounded-full overflow-hidden">
               <img
-                src={user.avatar_url}
+                src={user.avatar_url || defaultAvatarUrl}
                 alt={user.full_name}
                 className="w-full h-full object-cover"
               />

@@ -41,19 +41,35 @@ export default function ChatPage() {
   function formatTime(timestamp: string) {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInHours < 1) {
+    const MINUTE = 60;
+    const HOUR = 60 * MINUTE;
+    const DAY = 24 * HOUR;
+    const WEEK = 7 * DAY;
+    const MONTH = 30 * DAY;
+    const YEAR = 365 * DAY;
+
+    if (diffInSeconds < 30) {
       return "Vừa xong";
-    } else if (diffInHours < 24) {
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else if (diffInHours < 48) {
-      return "Hôm qua";
+    } else if (diffInSeconds < MINUTE) {
+      return `${diffInSeconds} giây trước`;
+    } else if (diffInSeconds < HOUR) {
+      const minutes = Math.floor(diffInSeconds / MINUTE);
+      return `${minutes} phút trước`;
+    } else if (diffInSeconds < DAY) {
+      const hours = Math.floor(diffInSeconds / HOUR);
+      return `${hours} giờ trước`;
+    } else if (diffInSeconds < WEEK) {
+      const days = Math.floor(diffInSeconds / DAY);
+      return `${days} ngày trước`;
     } else {
-      return date.toLocaleDateString();
+      // Nếu quá 7 ngày, hiển thị ngày/tháng/năm
+      return date.toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+      });
     }
   }
 
@@ -69,6 +85,8 @@ export default function ChatPage() {
       </div>
     );
   }
+
+  const defaultAvatarUrl = "default-avatar.png";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800">
@@ -112,7 +130,7 @@ export default function ChatPage() {
                   <div className="flex items-center p-6 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                     <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
                       <img
-                        src={chat.user.avatar_url}
+                        src={chat.user.avatar_url || defaultAvatarUrl}
                         alt={chat.user.full_name}
                         className="w-full h-full object-cover"
                       />
