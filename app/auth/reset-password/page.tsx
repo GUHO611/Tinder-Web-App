@@ -111,6 +111,7 @@ export default function ResetPasswordPage() {
         }
     };
 
+
     return (
         <div ref={containerRef} className="min-h-screen w-full flex items-center justify-center bg-[#FFC5D3] p-4 font-sans">
             <div className="reset-card bg-white/90 dark:bg-gray-900 rounded-[30px] shadow-2xl p-8 md:p-12 w-full max-w-md relative overflow-hidden">
