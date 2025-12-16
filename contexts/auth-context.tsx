@@ -2,6 +2,7 @@
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { createContext, useContext, useEffect, useState } from "react";
+import { setUserOnlineStatus } from "@/lib/actions/profile";
 
 
 interface AuthContextType {
@@ -26,13 +27,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     data: { session },
                 } = await supabase.auth.getSession();
                 setUser(session?.user ?? null);
-                console.log(session?.user);
+                if (session?.user) {
+                    await setUserOnlineStatus(true);
+                }
 
                 const {
                     data: { subscription },
                 } = supabase.auth.onAuthStateChange(async (event, session) => {
-                    setUser(session?.user ?? null)
+                    setUser(session?.user ?? null);
+                    // Xử lý sự kiện đăng nhập/đăng xuất
+                    if (event === 'SIGNED_IN' && session?.user) {
+                        await setUserOnlineStatus(true);
+                    } else if (event === 'SIGNED_OUT') {
+                        // Lưu ý: Khi signed out, có thể cần gọi server action qua API route 
+                        // hoặc chấp nhận user offline sau một khoảng thời gian (cron job)
+                        // Vì khi logout mất token, khó update DB. 
+                        // Cách tốt nhất: Set online = true. Client gửi "heartbeat" mỗi 5p.
+                    }
                 });
+
                 return () => subscription.unsubscribe();
             } catch (error) {
                 console.log(error);
@@ -43,10 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
         checkUser();
+        return () => { setUserOnlineStatus(false); }
     }, []);
     async function signOut() {
         try {
+            // Set Offline trước khi signout
+            await setUserOnlineStatus(false);
             await supabase.auth.signOut();
+            // router.push("/auth"); // Redirect về auth
         } catch (error) {
             console.log("Lỗi đăng xuất", error);
         }

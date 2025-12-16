@@ -5,17 +5,26 @@ import {
     getCurrentUserProfile,
     updateUserProfile,
     getAllHobbies,
+    UserProfile
 } from "@/lib/actions/profile";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-
+export interface UserPreferences {
+    age_range: {
+        min: number;
+        max: number;
+    };
+    distance: number;
+    gender_preference: string[];
+}
 interface Hobby {
     id: string;
     name: string;
     icon: string;
 }
-// Định nghĩa kiểu dữ liệu cho Form để typescript không báo lỗi
+
+// Định nghĩa kiểu dữ liệu cho Form
 interface ProfileFormData {
     full_name: string;
     username: string;
@@ -26,80 +35,128 @@ interface ProfileFormData {
     display_address: string;
     latitude: number | null;
     longitude: number | null;
-    hobbiesIds: string[]; // Mảng chứa ID các sở thích đã chọn
+    hobbiesIds: string[];
+    photos: string[];
+    preferences: UserPreferences;
 }
 
 export default function EditProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [locationLoading, setLocationLoading] = useState(false); // Loading cho nút lấy vị trí
+    const [locationLoading, setLocationLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-    // State cho danh sách sở thích
     const [availableHobbies, setAvailableHobbies] = useState<Hobby[]>([]);
 
     const [formData, setFormData] = useState<ProfileFormData>({
         full_name: "",
         username: "",
         bio: "",
-        gender: "male" as "male" | "female" | "other",
+        gender: "male", // Mặc định là male nếu chưa chọn
         birthdate: "",
         avatar_url: "",
-        display_address: "", // Thêm trường địa chỉ hiển thị
-        latitude: null,      // Thêm tọa độ để lưu vào PostGIS
+        display_address: "",
+        latitude: null,
         longitude: null,
         hobbiesIds: [],
+        photos: [],
+        preferences: {
+            age_range: { min: 18, max: 50 },
+            distance: 25,
+            gender_preference: []
+        }
     });
 
     useEffect(() => {
-        async function loadProfile() {
+        async function loadData() {
             try {
-                console.log("🚀 Bắt đầu tải dữ liệu...");
+                // Chạy song song cả 2 request để tiết kiệm thời gian
+                const [hobbiesData, profileData] = await Promise.all([
+                    getAllHobbies(),
+                    getCurrentUserProfile()
+                ]);
 
-                // Tách ra chạy riêng để dễ debug từng cái
-                const hobbiesData = await getAllHobbies();
-                console.log("📦 Dữ liệu Hobbies nhận được ở Client:", hobbiesData);
-
-                const profileData = await getCurrentUserProfile();
-                console.log("👤 Dữ liệu Profile nhận được ở Client:", profileData);
-                console.log("📍 CLIENT - Tọa độ nhận được:", {
-                    lat: profileData?.latitude,
-                    lng: profileData?.longitude,
-                    full_profile: profileData // Log cả cục để xem chi tiết
-                });
-
-                // Cập nhật State
+                // 1. Set Hobbies
                 if (hobbiesData && hobbiesData.length > 0) {
                     setAvailableHobbies(hobbiesData);
-                } else {
-                    console.warn("⚠️ Danh sách sở thích rỗng!");
                 }
+
+                // 2. Set Profile Data (Nếu có)
                 if (profileData) {
+                    // Xử lý Gender an toàn: Nếu DB trả về giá trị lạ hoặc null -> về "male" hoặc giá trị mặc định
+                    const safeGender = ["male", "female", "other"].includes(profileData.gender || "other")
+                        ? (profileData.gender as "male" | "female" | "other")
+                        : "male";
+
                     setFormData({
                         full_name: profileData.full_name || "",
                         username: profileData.username || "",
                         bio: profileData.bio || "",
-                        gender: (profileData.gender as "male" | "female" | "other") || "male",
+                        gender: safeGender,
                         birthdate: profileData.birthdate || "",
                         avatar_url: profileData.avatar_url || "",
                         display_address: profileData.display_address || "",
-                        // Lưu ý: Backend cần trả về lat/long từ cột location (PostGIS)
                         latitude: profileData.latitude || null,
                         longitude: profileData.longitude || null,
-                        hobbiesIds: profileData.hobbiesIds || [],
+                        // Quan trọng: Kiểm tra mảng hobbiesIds có tồn tại không
+                        hobbiesIds: Array.isArray(profileData.hobbiesIds) ? profileData.hobbiesIds : [],
+                        photos: profileData.photos || [],
+                        preferences: (profileData.preferences as unknown as UserPreferences) || {
+                            age_range: { min: 18, max: 50 },
+                            distance: 25,
+                            gender_preference: []
+                        }
                     });
                 }
-            } catch (err) {
-                console.error(err);
-                setError("Failed to load profile");
+            } catch {
+                setError("Không thể tải thông tin hồ sơ. Vui lòng thử lại.");
             } finally {
                 setLoading(false);
             }
         }
 
-        loadProfile();
+        loadData();
     }, []);
+    // Helper update Preferences
+    const updatePreference = <K extends keyof UserPreferences>(field: K, value: UserPreferences[K]) => {
+        setFormData(prev => ({
+            ...prev,
+            preferences: {
+                ...prev.preferences,
+                [field]: value
+            }
+        }));
+    };
+
+    // Helper update Age Range
+    const updateAgeRange = (type: 'min' | 'max', value: number) => {
+        setFormData(prev => ({
+            ...prev,
+            preferences: {
+                ...prev.preferences,
+                age_range: {
+                    ...prev.preferences.age_range,
+                    [type]: value
+                }
+            }
+        }));
+    };
+
+    // Helper Toggle Gender Preference
+    const toggleGenderPref = (gender: string) => {
+        setFormData(prev => {
+            const current = prev.preferences.gender_preference || [];
+            const updated = current.includes(gender)
+                ? current.filter(g => g !== gender)
+                : [...current, gender];
+            return {
+                ...prev,
+                preferences: { ...prev.preferences, gender_preference: updated }
+            };
+        });
+    };
+
     // --- XỬ LÝ SỞ THÍCH ---
     const toggleHobby = (hobbyId: string) => {
         setFormData((prev) => {
@@ -118,8 +175,7 @@ export default function EditProfilePage() {
         });
     };
 
-    // Hàm lấy vị trí từ trình duyệt
-    // --- LOGIC 2 & 3: XỬ LÝ VỊ TRÍ & REVERSE GEOCODING ---
+    // --- XỬ LÝ VỊ TRÍ (Reverse Geocoding) ---
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
             setError("Trình duyệt không hỗ trợ định vị.");
@@ -130,39 +186,40 @@ export default function EditProfilePage() {
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
-
                 let addressName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
-                // GỌI API REVERSE GEOCODING (MIỄN PHÍ TỪ OPENSTREETMAP)
                 try {
+                    // Gọi API OpenStreetMap (Miễn phí, không cần key)
                     const res = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+                        { headers: { 'User-Agent': 'TinderCloneApp/1.0' } } // Thêm User-Agent để tránh bị block
                     );
                     const data = await res.json();
 
                     if (data && data.address) {
-                        // Ưu tiên lấy Thành phố -> Thị xã -> Quận/Huyện
-                        const city = data.address.city || data.address.town || data.address.county || data.address.state;
-                        const country = data.address.country;
-                        addressName = `${city}, ${country}`;
+                        const city = data.address.city || data.address.town || data.address.county || data.address.state || "";
+                        const country = data.address.country || "";
+                        // Ghép chuỗi địa chỉ gọn gàng
+                        addressName = [city, country].filter(Boolean).join(", ");
                     }
                 } catch (err) {
-                    console.error("Lỗi lấy tên địa điểm:", err);
-                    // Nếu lỗi API thì vẫn giữ tọa độ số
+                    console.warn("Lỗi lấy tên địa điểm (dùng tọa độ thay thế):", err);
                 }
 
                 setFormData((prev) => ({
                     ...prev,
                     latitude,
                     longitude,
-                    display_address: addressName, // Tự động điền tên thành phố
+                    display_address: addressName,
                 }));
                 setLocationLoading(false);
+                setError(null); // Xóa lỗi cũ nếu có
             },
-            (err) => {
-                setError("Vui lòng cấp quyền truy cập vị trí.");
+            () => {
+                setError("Vui lòng cấp quyền truy cập vị trí trên trình duyệt.");
                 setLocationLoading(false);
-            }
+            },
+            { timeout: 10000, enableHighAccuracy: true }
         );
     };
 
@@ -171,22 +228,29 @@ export default function EditProfilePage() {
         setSaving(true);
         setError(null);
 
-        // Kiểm tra logic vị trí
+        // Validation cơ bản
         if (!formData.latitude || !formData.longitude) {
-            setError("Vui lòng nhấn 'Cập nhật vị trí' để chúng tôi tìm người phù hợp quanh bạn.");
+            setError("Vui lòng nhấn 'Cập nhật vị trí' để hoàn tất hồ sơ.");
+            setSaving(false);
+            return;
+        }
+        if (!formData.full_name.trim() || !formData.username.trim()) {
+            setError("Tên và Tên người dùng không được để trống.");
             setSaving(false);
             return;
         }
 
         try {
-            const result = await updateUserProfile(formData);
+            const result = await updateUserProfile(formData as unknown as Partial<UserProfile>);
             if (result.success) {
+                // Thành công -> Chuyển về trang Profile xem kết quả
                 router.push("/profile");
+                router.refresh(); // Refresh để đảm bảo data mới nhất hiển thị
             } else {
                 setError(result.error || "Lỗi cập nhật hồ sơ.");
             }
         } catch (err) {
-            setError("Lỗi hệ thống.");
+            setError("Lỗi hệ thống. Vui lòng thử lại sau.");
         } finally {
             setSaving(false);
         }
@@ -196,15 +260,31 @@ export default function EditProfilePage() {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
+    // --- HÀM XỬ LÝ ẢNH ---
+
+    // Thêm ảnh mới vào mảng
+    const handleAddPhoto = (url: string) => {
+        if (formData.photos.length >= 5) return;
+        setFormData(prev => ({
+            ...prev,
+            photos: [...prev.photos, url]
+        }));
+    };
+
+    // Xóa ảnh khỏi mảng
+    const handleRemovePhoto = (indexToRemove: number) => {
+        setFormData(prev => ({
+            ...prev,
+            photos: prev.photos.filter((_, index) => index !== indexToRemove)
+        }));
+    };
 
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">
-                        Đang tải hồ sơ...
-                    </p>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400">Đang tải hồ sơ...</p>
                 </div>
             </div>
         );
@@ -218,15 +298,13 @@ export default function EditProfilePage() {
                         Chỉnh sửa hồ sơ
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400">
-                        Cập nhật thông tin cá nhân của bạn.
+                        Cập nhật thông tin để thu hút nhiều lượt tương tác hơn.
                     </p>
                 </header>
 
                 <div className="max-w-2xl mx-auto">
-                    <form
-                        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8"
-                        onSubmit={handleFormSubmit}
-                    >
+                    <form className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8" onSubmit={handleFormSubmit}>
+
                         {/* Avatar Section */}
                         <div className="mb-8">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
@@ -244,232 +322,235 @@ export default function EditProfilePage() {
                                     <div className="mt-2">
                                         <PhotoUpload
                                             onPhotoUploaded={(url) => {
-                                                setFormData((prev) => ({
-                                                    ...prev,
-                                                    avatar_url: url,
-                                                }));
+                                                setFormData((prev) => ({ ...prev, avatar_url: url }));
                                             }}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                        Tải lên ảnh đại diện mới
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                                        JPG, PNG or GIF. Tối đa 5MB.
-                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Tải lên ảnh đẹp nhất của bạn</p>
+                                    <p className="text-xs text-gray-500">JPG, PNG. Tối đa 5MB.</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Basic Info Group */}
+                        {/* Basic Info */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div>
-                                <label
-                                    htmlFor="full_name"
-                                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                                >
-                                    Tên đầy đủ *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tên đầy đủ *</label>
                                 <input
-                                    type="text"
-                                    id="full_name"
-                                    name="full_name"
-                                    value={formData.full_name}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                                    placeholder="Nhập tên đầy đủ của bạn"
+                                    type="text" name="full_name" value={formData.full_name} onChange={handleInputChange} required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-white"
+                                    placeholder="Tên hiển thị"
                                 />
                             </div>
-
                             <div>
-                                <label
-                                    htmlFor="username"
-                                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                                >
-                                    Tên người dùng *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username *</label>
                                 <input
-                                    type="text"
-                                    id="username"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                                    placeholder="Chọn tên người dùng"
+                                    type="text" name="username" value={formData.username} onChange={handleInputChange} required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-white"
+                                    placeholder="@username"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div>
-                                <label
-                                    htmlFor="gender"
-                                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                                >
-                                    Giới Tính *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Giới Tính *</label>
                                 <select
-                                    id="gender"
-                                    name="gender"
-                                    value={formData.gender}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                    name="gender" value={formData.gender} onChange={handleInputChange} required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-white"
                                 >
                                     <option value="male">Nam</option>
                                     <option value="female">Nữ</option>
                                     <option value="other">Khác</option>
                                 </select>
                             </div>
-
                             <div>
-                                <label
-                                    htmlFor="birthdate"
-                                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                                >
-                                    Sinh nhật *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sinh nhật *</label>
                                 <input
-                                    type="date"
-                                    id="birthdate"
-                                    name="birthdate"
-                                    value={formData.birthdate}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                    type="date" name="birthdate" value={formData.birthdate} onChange={handleInputChange} required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-white"
                                 />
                             </div>
                         </div>
 
-                        {/* --- LOCATION SECTION (Đã tối ưu) --- */}
+                        {/* Location */}
                         <div className="mb-6 p-4 bg-blue-50 dark:bg-gray-700 rounded-lg border border-blue-100 dark:border-gray-600">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                📍 Vị trí của bạn (Bắt buộc để Matching)
-                            </label>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">📍 Vị trí (Bắt buộc)</label>
                             <div className="flex gap-2">
                                 <input
-                                    type="text"
-                                    value={formData.display_address}
-                                    readOnly // QUAN TRỌNG: Không cho sửa tay để đảm bảo match đúng
-                                    placeholder="Chưa có vị trí"
+                                    type="text" value={formData.display_address} readOnly
+                                    placeholder="Chưa cập nhật vị trí"
                                     className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg cursor-not-allowed text-gray-500 dark:text-gray-300"
                                 />
                                 <button
-                                    type="button"
-                                    onClick={handleGetLocation}
-                                    disabled={locationLoading}
-                                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap shadow-md"
+                                    type="button" onClick={handleGetLocation} disabled={locationLoading}
+                                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors whitespace-nowrap shadow-md"
                                 >
-                                    {locationLoading ? "Đang tìm..." : "Cập nhật vị trí"}
+                                    {locationLoading ? "Đang tìm..." : "Cập nhật"}
                                 </button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-2">
-                                * Hệ thống sử dụng GPS để tìm người ở gần bạn. Vui lòng nhấn nút Cập nhật.
-                            </p>
                         </div>
 
-                        {/* --- SỞ THÍCH (HOBBIES) --- */}
+                        {/* Hobbies */}
                         <div className="mb-8">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex justify-between">
                                 <span>Sở thích</span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${formData.hobbiesIds.length === 5 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                    Đã chọn: {formData.hobbiesIds.length}/5
+                                    {formData.hobbiesIds.length}/5
                                 </span>
                             </label>
-
                             {availableHobbies.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                     {availableHobbies.map((hobby) => {
                                         const isSelected = formData.hobbiesIds.includes(hobby.id);
                                         return (
                                             <button
-                                                key={hobby.id}
-                                                type="button"
-                                                onClick={() => toggleHobby(hobby.id)}
-                                                className={`
-                                  group relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border select-none
-                                  ${isSelected
-                                                        ? "bg-pink-500 text-white border-pink-500 shadow-md ring-2 ring-pink-200"
-                                                        : "bg-white text-gray-600 border-gray-200 hover:border-pink-300 hover:bg-pink-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
-                                                    }
-                              `}
+                                                key={hobby.id} type="button" onClick={() => toggleHobby(hobby.id)}
+                                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${isSelected ? "bg-pink-500 text-white border-pink-500 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:bg-pink-50 dark:bg-gray-700 dark:text-gray-300"}`}
                                             >
-                                                <span className="mr-1.5">{hobby.icon}</span>
-                                                {hobby.name}
+                                                {hobby.icon} {hobby.name}
                                             </button>
                                         );
                                     })}
                                 </div>
                             ) : (
-                                // Nếu tải xong mà vẫn không có dữ liệu -> Hiện thông báo khác, không hiện "Đang tải" nữa
-                                <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center">
-                                    <p className="text-sm text-gray-500 mb-2">
-                                        {loading ? "Đang tải danh sách..." : "Không tìm thấy danh sách sở thích."}
-                                    </p>
-                                    {!loading && (
-                                        <button
-                                            type="button"
-                                            onClick={() => window.location.reload()}
-                                            className="text-xs text-pink-500 underline"
-                                        >
-                                            Tải lại trang
-                                        </button>
-                                    )}
-                                </div>
+                                <p className="text-sm text-gray-500">Đang tải danh sách sở thích...</p>
                             )}
                         </div>
-                        {/* Bio Section */}
+
+                        {/* Bio */}
                         <div className="mb-8">
-                            <label
-                                htmlFor="bio"
-                                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                            >
-                                Giới thiệu về tôi *
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Giới thiệu bản thân</label>
                             <textarea
-                                id="bio"
-                                name="bio"
-                                value={formData.bio}
-                                onChange={handleInputChange}
-                                required
-                                rows={4}
-                                maxLength={500}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
-                                placeholder="Hãy kể cho người khác nghe về bạn..."
+                                name="bio" value={formData.bio} onChange={handleInputChange} rows={4} maxLength={500}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 dark:bg-gray-700 dark:text-white resize-none"
+                                placeholder="Viết gì đó về bạn..."
                             />
-                            <div className="flex justify-between mt-1">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {formData.bio.length}/500 từ
-                                </p>
+                            <p className="text-xs text-right text-gray-500 mt-1">{formData.bio.length}/500</p>
+                        </div>
+                        {/* --- PHẦN THƯ VIỆN ẢNH --- */}
+                        <div className="mb-8">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                                Thư viện ảnh ({formData.photos.length}/5)
+                            </label>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* 1. Render các ảnh đã có */}
+                                {formData.photos.map((photoUrl, index) => (
+                                    <div key={index} className="relative aspect-[2/3] rounded-lg overflow-hidden border dark:border-gray-600 group">
+                                        <img
+                                            src={photoUrl}
+                                            alt={`Photo ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        {/* Nút xóa ảnh */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemovePhoto(index)}
+                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* 2. Render nút Upload nếu chưa đủ 5 ảnh */}
+                                {formData.photos.length < 5 && (
+                                    <div className="aspect-[2/3] rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 transition-colors">
+                                        {/* Sử dụng component PhotoUpload bạn đã có */}
+                                        {/* Lưu ý: Bạn cần chỉnh PhotoUpload để nó KHÔNG hiện ảnh preview to đùng mà chỉ trả về URL, 
+                           hoặc tạo một component Upload nhỏ gọn hơn cho ô này. 
+                           Dưới đây là cách dùng nếu PhotoUpload hỗ trợ custom style hoặc bạn bọc nó lại */}
+                                        <div className="scale-75">
+                                            <PhotoUpload
+                                                onPhotoUploaded={(url) => handleAddPhoto(url)}
+                                            // Gợi ý: Truyền thêm prop bucket="profile-photos" vào PhotoUpload nếu bạn muốn dùng bucket riêng
+                                            />
+                                        </div>
+                                        <span className="text-xs text-gray-500 mt-2">Thêm ảnh</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        {/* --- CÀI ĐẶT TÌM KIẾM (PREFERENCES) - Yêu cầu 4 --- */}
+                        <div className="mb-8 p-6 bg-purple-50 dark:bg-gray-700/50 rounded-xl border border-purple-100 dark:border-gray-600">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Cài đặt Tìm kiếm</h3>
+
+                            {/* 1. Khoảng cách */}
+                            <div className="mb-6">
+                                <div className="flex justify-between mb-2">
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Khoảng cách tối đa</label>
+                                    <span className="text-sm font-bold text-pink-600">{formData.preferences.distance} km</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1" max="100"
+                                    value={formData.preferences.distance}
+                                    onChange={(e) => updatePreference('distance', parseInt(e.target.value))}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                />
+                            </div>
+
+                            {/* 2. Độ tuổi */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Độ tuổi mong muốn</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <span className="text-xs text-gray-500">Từ</span>
+                                        <input
+                                            type="number" min="18" max="100"
+                                            value={formData.preferences.age_range.min}
+                                            onChange={(e) => updateAgeRange('min', parseInt(e.target.value))}
+                                            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:text-white"
+                                        />
+                                    </div>
+                                    <span className="text-gray-400">-</span>
+                                    <div className="flex-1">
+                                        <span className="text-xs text-gray-500">Đến</span>
+                                        <input
+                                            type="number" min="18" max="100"
+                                            value={formData.preferences.age_range.max}
+                                            onChange={(e) => updateAgeRange('max', parseInt(e.target.value))}
+                                            className="w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 3. Giới tính quan tâm */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tôi muốn xem</label>
+                                <div className="flex gap-3">
+                                    {['male', 'female', 'other'].map(gender => (
+                                        <button
+                                            key={gender}
+                                            type="button"
+                                            onClick={() => toggleGenderPref(gender)}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${formData.preferences.gender_preference.includes(gender)
+                                                ? "bg-pink-500 text-white border-pink-500"
+                                                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500"
+                                                }`}
+                                        >
+                                            {gender === 'male' ? 'Nam' : gender === 'female' ? 'Nữ' : 'Khác'}
+                                        </button>
+                                    ))}
+                                </div>
+                                {formData.preferences.gender_preference.length === 0 && (
+                                    <p className="text-xs text-gray-500 mt-1 italic">Mặc định sẽ hiển thị tất cả</p>
+                                )}
                             </div>
                         </div>
 
-                        {/* Error Message */}
-                        {error && (
-                            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                                {error}
-                            </div>
-                        )}
 
-                        {/* Action Buttons */}
+                        {/* Errors & Buttons */}
+                        {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">{error}</div>}
+
                         <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
-                            <button
-                                type="button"
-                                onClick={() => router.back()}
-                                className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                            >
-                                Quay lại
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="px-6 py-2 bg-gradient-to-r from-pink-500 to-red-500 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                            >
-                                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                            <button type="button" onClick={() => router.back()} className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:underline">Hủy</button>
+                            <button type="submit" disabled={saving} className="px-6 py-2 bg-gradient-to-r from-pink-500 to-red-500 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-red-600 transition-all shadow-md disabled:opacity-50">
+                                {saving ? "Đang lưu..." : "Lưu Thay Đổi"}
                             </button>
                         </div>
                     </form>
