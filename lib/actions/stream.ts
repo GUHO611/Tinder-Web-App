@@ -77,7 +77,7 @@ export async function createOrGetChannel(otherUserId: string) {
   for (let i = 0; i < combinedIds.length; i++) {
     const char = combinedIds.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash; 
   }
 
   const channelId = `match_${Math.abs(hash).toString(36)}`;
@@ -126,7 +126,7 @@ export async function createOrGetChannel(otherUserId: string) {
   };
 }
 
-// SỬA DUY NHẤT CHỖ NÀY ĐỂ CALLID NGẮN < 64 KÝ TỰ
+
 export async function createVideoCall(otherUserId: string) {
   const supabase = await createClient();
 

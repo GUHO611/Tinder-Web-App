@@ -25,7 +25,6 @@ interface Message {
   user_id: string;
 }
 
-// THÊM PROP onCallStart ĐỂ BÁO CHO PAGE.TSX HIỆN OVERLAY VIDEO CALL
 export default function StreamChatInterface({
   otherUser,
   ref,
@@ -137,10 +136,12 @@ export default function StreamChatInterface({
 
         chatChannel.on("message.new", (event: Event) => {
           if (event.message) {
+            // Check tin nhắn mời gọi video
             if (event.message.text?.includes(`📹 Video call invitation`)) {
               const customData = event.message as any;
 
-              if (customData.caller_id !== userId) {
+              // Chỉ hiện thông báo cho người nhận (ID khác người gửi)
+              if (customData.caller_id && customData.caller_id !== userId) {
                 setIncomingCallId(customData.call_id);
                 setCallerName(customData.caller_name || "Someone");
                 setIncomingCall(true);
@@ -184,7 +185,8 @@ export default function StreamChatInterface({
         setClient(chatClient);
         setChannel(chatChannel);
       } catch (error) {
-        router.push("/chat");
+        // router.push("/chat"); // Có thể comment lại để debug nếu lỗi
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -209,6 +211,7 @@ export default function StreamChatInterface({
       setIsCallInitiator(true);
 
       if (channel) {
+        // Gửi tin nhắn kèm custom data (call_id, caller_id)
         const messageData = {
           text: `📹 Video call invitation`,
           call_id: callId,
@@ -276,14 +279,17 @@ export default function StreamChatInterface({
   }
 
   function handleAcceptCall() {
+    // Set ID cuộc gọi từ tin nhắn nhận được
     setVideoCallId(incomingCallId);
-    setShowVideoCall(true);
+    setShowVideoCall(true); // Mở component VideoCall
+
+    // Reset overlay
     setIncomingCall(false);
     setIncomingCallId("");
     setCallerName("");
-    setIsCallInitiator(false);
+    setIsCallInitiator(false); // Đánh dấu là người nhận
 
-    // GỌI PROP onCallStart ĐỂ PAGE.TSX HIỆN OVERLAY VIDEO CALL
+    // Gọi prop callback nếu cần xử lý ở parent
     onCallStart?.(incomingCallId);
   }
 
@@ -297,7 +303,8 @@ export default function StreamChatInterface({
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">
-            Setting up chat...
+            {/* Sửa: Setting up chat... */}
+            Đang thiết lập trò chuyện...
           </p>
         </div>
       </div>
@@ -365,7 +372,7 @@ export default function StreamChatInterface({
           <button
             onClick={scrollToBottom}
             className="bg-pink-500 hover:bg-pink-600 text-white p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110"
-            title="Scroll to bottom"
+            title="Cuộn xuống cuối"
           >
             <svg
               className="w-5 h-5"
@@ -401,7 +408,8 @@ export default function StreamChatInterface({
                 channel.keystroke();
               }
             }}
-            placeholder="Type a message..."
+            // Sửa: Type a message...
+            placeholder="Nhập tin nhắn..."
             className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
             disabled={!channel}
           />
@@ -440,23 +448,26 @@ export default function StreamChatInterface({
                 />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Incoming Video Call
+                
+                Cuộc gọi Video đến
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {callerName} is calling you
+                
+                {callerName} đang gọi cho bạn
               </p>
               <div className="flex space-x-4">
                 <button
                   onClick={handleDeclineCall}
                   className="flex-1 bg-red-500 text-white py-3 px-6 rounded-full font-semibold hover:bg-red-600 transition-colors duration-200"
                 >
-                  Decline
+                 
+                  Từ chối
                 </button>
                 <button
                   onClick={handleAcceptCall}
                   className="flex-1 bg-green-500 text-white py-3 px-6 rounded-full font-semibold hover:bg-green-600 transition-colors duration-200"
                 >
-                  Accept
+                  Chấp nhận
                 </button>
               </div>
             </div>
