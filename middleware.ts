@@ -31,16 +31,23 @@ export async function middleware(request: NextRequest) {
         }
     )
 
+    // ⚠️ Quan trọng: getUser() sẽ validate session và refresh cookie nếu cần
     const { data: { user } } = await supabase.auth.getUser()
 
-    // 1. Bảo vệ các Route cần đăng nhập
+    // 1. CHẶN NGƯỜI DÙNG CHƯA ĐĂNG NHẬP
+    // Nếu không có user và không ở trang auth -> Đẩy về /auth
     if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
         return NextResponse.redirect(new URL('/auth', request.url))
     }
 
-    // 2. Logic Bắt buộc hoàn thiện Profile (Yêu cầu 1 & 2)
+    // 2. LOGIC PROFILE (Chỉ chạy khi đã login)
     if (user) {
-        // Lấy thông tin is_profile_completed từ DB
+        // Nếu user đã login mà cố vào /auth -> Đẩy về trang chủ
+        if (request.nextUrl.pathname.startsWith('/auth')) {
+            return NextResponse.redirect(new URL('/', request.url))
+        }
+
+        // Kiểm tra hoàn thiện hồ sơ
         const { data: userProfile } = await supabase
             .from('users')
             .select('is_profile_completed')
@@ -49,12 +56,10 @@ export async function middleware(request: NextRequest) {
 
         const isCompleted = userProfile?.is_profile_completed
         const isEditingProfile = request.nextUrl.pathname === '/profile/edit'
-        const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
         const isStaticAsset = request.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|css|js)$/)
 
-        // Nếu Profile chưa xong VÀ không phải đang ở trang Edit VÀ không phải trang Auth/Static
-        // -> Bắt buộc quay về trang Edit
-        if (!isCompleted && !isEditingProfile && !isAuthPage && !isStaticAsset) {
+        // Nếu chưa xong hồ sơ -> Bắt buộc ở trang Edit
+        if (!isCompleted && !isEditingProfile && !isStaticAsset) {
             return NextResponse.redirect(new URL('/profile/edit', request.url))
         }
     }
@@ -64,12 +69,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         */
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

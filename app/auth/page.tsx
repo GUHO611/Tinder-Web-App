@@ -47,7 +47,7 @@ function AuthPage() {
     useEffect(() => {
         if (user && !authLoading) {
             router.push("/");
-            router.refresh();
+            // router.refresh();
         }
     }, [user, authLoading, router]);
 
