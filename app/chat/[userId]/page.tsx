@@ -1,6 +1,6 @@
 "use client";
 
-import { UserProfile } from "@/app/profile/page";
+import { UserProfile } from "@/lib/actions/profile";
 import ChatHeader from "@/components/ChatHeader";
 import StreamChatInterface from "@/components/StreamChatInterface";
 import VideoCall from "@/components/VideoCall";
@@ -81,7 +81,7 @@ export default function ChatConversationPage() {
             Không tìm thấy người dùng
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Người dùng bạn đang tìm không tồn tại hoặc bạn không có quyền 
+            Người dùng bạn đang tìm không tồn tại hoặc bạn không có quyền
             trò chuyện với họ!
           </p>
           <button

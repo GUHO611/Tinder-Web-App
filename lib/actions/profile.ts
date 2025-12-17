@@ -20,6 +20,7 @@ export interface UserProfile {
     id: string;
     full_name?: string;
     username?: string;
+    email?: string;
     bio?: string;
     gender?: string;
     birthdate?: string;
@@ -53,9 +54,9 @@ interface UserTableUpdate {
     is_profile_completed?: boolean;
     updated_at?: string;
     location?: string;
-    is_online?: boolean;     // Thêm trường này
-    last_active?: string;    // Thêm trường này
-    is_verified?: boolean;   // Thêm trường này
+    is_online?: boolean;
+    last_active?: string;
+    is_verified?: boolean;
 }
 
 // --- 2. SERVER ACTIONS ---
@@ -105,6 +106,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
 
     return {
         ...profileFields,
+        email: user.email,
         preferences: profileFields.preferences as Record<string, unknown>,
         latitude,
         longitude,
@@ -141,6 +143,54 @@ export async function markUserAsVerified() {
     };
 
     await supabase.from("users").update(updates).eq("id", user.id);
+}
+
+
+// --- THÊM HÀM NÀY VÀO CUỐI FILE HOẶC DƯỚI getCurrentUserProfile ---
+
+export async function getUserProfileById(userId: string): Promise<UserProfile | null> {
+    const supabase = await createClient();
+
+    // 1. Lấy thông tin user cụ thể
+    const { data, error } = await supabase
+        .from("users")
+        .select(`*, user_hobbies ( hobbies ( * ) )`)
+        .eq("id", userId)
+        .single();
+
+    if (error || !data) {
+        console.error("Error fetching user profile:", error);
+        return null;
+    }
+
+    // 2. Xử lý Hobbies
+    const rawUserHobbies = (data.user_hobbies || []) as unknown as UserHobbyJoin[];
+    const validHobbies = rawUserHobbies.map((item) => item.hobbies).filter((h): h is Hobby => h !== null);
+    const hobbiesIds = validHobbies.map((h) => h.id);
+
+    // 3. Xử lý Location
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    if (data.location && typeof data.location === "string") {
+        const matches = data.location.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+        if (matches && matches.length === 3) {
+            longitude = parseFloat(matches[1]);
+            latitude = parseFloat(matches[2]);
+        }
+    }
+
+    const photos = Array.isArray(data.photos) ? data.photos : [];
+    const { user_hobbies, location, ...profileFields } = data;
+
+    return {
+        ...profileFields,
+        preferences: profileFields.preferences as Record<string, unknown>,
+        latitude,
+        longitude,
+        hobbiesIds,
+        hobbies: validHobbies,
+        photos,
+    };
 }
 
 // --- HÀM UPDATE PROFILE CHÍNH (ĐÃ SỬA LỖI LOGIC) ---

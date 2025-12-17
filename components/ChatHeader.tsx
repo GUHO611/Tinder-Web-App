@@ -1,6 +1,6 @@
 "use client";
 
-import { UserProfile } from "@/app/profile/page";
+import { UserProfile } from "@/lib/actions/profile";
 import { calculateAge } from "@/lib/helpers/calculate-age";
 import { useRouter } from "next/navigation";
 
@@ -55,7 +55,7 @@ export default function ChatHeader({ user, onVideoCall }: ChatHeaderProps) {
 
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {user.full_name}, {calculateAge(user.birthdate)}
+                {user.full_name}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 @{user.username}
