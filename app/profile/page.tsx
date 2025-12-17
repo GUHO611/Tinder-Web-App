@@ -43,6 +43,7 @@ export interface UserProfile {
     is_verified: boolean;
     is_online: boolean;
     created_at: string;
+    photos: string[];
 }
 
 const GENDER_MAP: Record<string, string> = {
@@ -216,6 +217,67 @@ export default function ProfilePage() {
                                                 </p>
                                             </div>
                                         </div>
+                                    </div>
+                                    {/* --- THƯ VIỆN ẢNH (CAROUSEL CUỘN NGANG) --- */}
+                                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                📸 Thư viện ảnh
+                                                <span className="text-xs font-normal text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                                                    {profile.photos?.length || 0}/5
+                                                </span>
+                                            </h3>
+                                            {(!profile.photos || profile.photos.length === 0) && (
+                                                <Link href="/profile/edit" className="text-sm text-pink-500 hover:underline">
+                                                    + Thêm ảnh
+                                                </Link>
+                                            )}
+                                        </div>
+
+                                        {profile.photos && profile.photos.length > 0 ? (
+                                            // Container cuộn ngang
+                                            <div
+                                                className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
+                                                style={{ scrollbarWidth: 'thin', scrollbarColor: '#CBD5E1 transparent' }} // Style scrollbar cho Firefox
+                                            >
+                                                {profile.photos.map((photo, index) => (
+                                                    <div
+                                                        key={index}
+                                                        // w-[30%] để hiện khoảng 3 ảnh, flex-none để không bị co lại
+                                                        className="flex-none w-[30%] min-w-[120px] aspect-[2/3] rounded-xl overflow-hidden shadow-md snap-center border border-gray-100 dark:border-gray-700 relative group"
+                                                    >
+                                                        <img
+                                                            src={photo}
+                                                            alt={`Gallery ${index}`}
+                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                        />
+                                                        {/* Gradient mờ bên dưới để ảnh đẹp hơn */}
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    </div>
+                                                ))}
+
+                                                {/* Nút giả cuối cùng để gợi ý bấm vào Edit nếu muốn thêm */}
+                                                {profile.photos.length < 5 && (
+                                                    <Link
+                                                        href="/profile/edit"
+                                                        className="flex-none w-[30%] min-w-[120px] aspect-[2/3] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center text-gray-400 hover:text-pink-500 hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-gray-700 transition-all snap-center"
+                                                    >
+                                                        <span className="text-2xl mb-1">+</span>
+                                                        <span className="text-xs font-medium">Thêm</span>
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                                <p className="text-gray-500 text-sm mb-3">Bạn chưa có ảnh nào trong thư viện.</p>
+                                                <Link
+                                                    href="/profile/edit"
+                                                    className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm shadow-sm hover:shadow-md transition-all"
+                                                >
+                                                    Tải ảnh lên ngay
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Preferences */}
