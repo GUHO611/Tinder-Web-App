@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { UserProfile } from "../profile/page";
 import { getUserMatches } from "@/lib/actions/matches";
 import Link from "next/link";
+import { UserProfile } from "@/lib/actions/profile";
+import { useRouter } from "next/navigation";
 
 interface ChatData {
   id: string;
@@ -15,6 +16,7 @@ interface ChatData {
 export default function ChatPage() {
   const [chats, setChats] = useState<ChatData[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function loadMatches() {
@@ -88,6 +90,12 @@ export default function ChatPage() {
 
   const defaultAvatarUrl = "default-avatar.png";
 
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Ngăn Link cha kích hoạt
+    e.stopPropagation(); // Ngăn sự kiện nổi bọt lên Link cha
+    router.push("/profile"); // Chuyển hướng sang t rang profile
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
@@ -120,32 +128,46 @@ export default function ChatPage() {
           </div>
         ) : (
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+            <div className="grid space-y-4">
               {chats.map((chat, key) => (
                 <Link
                   key={key}
                   href={`/chat/${chat.id}`}
-                  className="block hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                  className="group block bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-200 border border-transparent hover:border-pink-200 dark:hover:border-pink-900"
                 >
-                  <div className="flex items-center p-6 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-                    <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
-                      <img
-                        src={chat.user.avatar_url || defaultAvatarUrl}
-                        alt={chat.user.full_name}
-                        className="w-full h-full object-cover"
-                      />
-                      {chat.unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                          {chat.unreadCount}
+                  <div className="flex items-center space-x-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-gray-100 dark:border-gray-700">
+                        <div onClick={handleAvatarClick}>
+                          <img
+                            src={chat.user.avatar_url || defaultAvatarUrl}
+                            alt={chat.user.full_name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
                         </div>
-                      )}
+                        <div className="absolute bottom-1 right-1 flex items-center justify-center z-20">
+                          {/* Vòng nhấp nháy tỏa ra */}
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+
+                          {/* Chấm tròn chính */}
+                          <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+                        </div>
+                        
+                        {chat.unreadCount > 0 && (
+                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                            {chat.unreadCount}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex-1 min-w-0 ml-4">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                          {chat.user.full_name}
-                        </h3>
+                        <div onClick={handleAvatarClick}>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                            {chat.user.full_name}
+                          </h3>
+                        </div>
                         <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
                           {formatTime(chat.lastMessageTime)}
                         </span>
