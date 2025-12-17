@@ -90,10 +90,10 @@ export default function ChatPage() {
 
   const defaultAvatarUrl = "default-avatar.png";
 
-  const handleAvatarClick = (e: React.MouseEvent) => {
+  const handleAvatarClick = (e: React.MouseEvent, userId: string) => {
     e.preventDefault(); // Ngăn Link cha kích hoạt
     e.stopPropagation(); // Ngăn sự kiện nổi bọt lên Link cha
-    router.push("/profile"); // Chuyển hướng sang t rang profile
+    router.push(`/profile/${userId}`) // Chuyển hướng sang t rang profile
   };
 
   return (
@@ -138,7 +138,7 @@ export default function ChatPage() {
                   <div className="flex items-center space-x-4">
                     <div className="relative flex-shrink-0">
                       <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-gray-100 dark:border-gray-700">
-                        <div onClick={handleAvatarClick}>
+                        <div>
                           <img
                             src={chat.user.avatar_url || defaultAvatarUrl}
                             alt={chat.user.full_name}
@@ -163,7 +163,7 @@ export default function ChatPage() {
 
                     <div className="flex-1 min-w-0 ml-4">
                       <div className="flex items-center justify-between mb-1">
-                        <div onClick={handleAvatarClick}>
+                        <div>
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                             {chat.user.full_name}
                           </h3>

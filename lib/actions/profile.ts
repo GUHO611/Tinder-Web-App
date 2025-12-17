@@ -36,7 +36,6 @@ export interface UserProfile {
     last_active?: string;
     is_verified?: boolean;
     created_at: string;
-
 }
 
 // FIX: Mở rộng interface này để bao gồm TẤT CẢ các trường có thể update
