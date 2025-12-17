@@ -1,6 +1,6 @@
 "use client";
 
-import { UserProfile } from "@/app/profile/page";
+import { UserProfile } from "@/lib/actions/profile";
 import { calculateAge } from "@/lib/helpers/calculate-age";
 import { useRouter } from "next/navigation";
 
@@ -36,18 +36,26 @@ export default function ChatHeader({ user, onVideoCall }: ChatHeaderProps) {
           </button>
 
           <div className="flex items-center space-x-3">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden">
-              <img
-                src={user.avatar_url || "/default-avatar.png"}
-                alt={user.full_name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full overflow-hidden">
+                <img
+                  src={user.avatar_url || "/default-avatar.png"}
+                  alt={user.full_name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center z-20">
+                  {/* Vòng nhấp nháy tỏa ra */}
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+
+                  {/* Chấm tròn chính */}
+                  <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+                </div>
+              </div>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {user.full_name}, {calculateAge(user.birthdate)}
+                {user.full_name}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 @{user.username}
