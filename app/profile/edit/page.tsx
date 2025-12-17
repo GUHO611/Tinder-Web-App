@@ -47,6 +47,7 @@ export default function EditProfilePage() {
     const [locationLoading, setLocationLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ProfileFormData, boolean>>>({});
+    const [ageError, setAgeError] = useState<string | null>(null);
 
     const router = useRouter();
     const [availableHobbies, setAvailableHobbies] = useState<Hobby[]>([]);
@@ -119,8 +120,53 @@ export default function EditProfilePage() {
     const updatePreference = <K extends keyof UserPreferences>(field: K, value: UserPreferences[K]) => {
         setFormData(prev => ({ ...prev, preferences: { ...prev.preferences, [field]: value } }));
     };
+    // 1. Hàm xử lý khi đang nhập liệu (Cho phép gõ tự do)
     const updateAgeRange = (type: 'min' | 'max', value: number) => {
-        setFormData(prev => ({ ...prev, preferences: { ...prev.preferences, age_range: { ...prev.preferences.age_range, [type]: value } } }));
+        // Chỉ chặn nếu lớn hơn 50 ngay lập tức (Hard limit)
+        if (value > 50) value = 50;
+
+        // Xóa logic chặn < 18 ở đây để người dùng có thể gõ số (ví dụ gõ 2 để ra 25)
+
+        // Validation Logic (Kiểm tra chéo Min/Max để hiện lỗi)
+        let newError = null;
+        // Lưu ý: Lấy giá trị đối chiếu từ state hiện tại
+        const otherValue = type === 'min'
+            ? formData.preferences.age_range.max
+            : formData.preferences.age_range.min;
+
+        if (type === 'min') {
+            if (value > otherValue) {
+                newError = "Độ tuổi tối thiểu không được lớn hơn độ tuổi tối đa.";
+            }
+        } else {
+            if (value < otherValue) {
+                newError = "Độ tuổi tối đa không được nhỏ hơn độ tuổi tối thiểu.";
+            }
+        }
+
+        // Nếu nhỏ hơn 18 thì báo lỗi nhẹ hoặc để onBlur xử lý, ở đây ta tạm clear lỗi nếu hợp lệ chéo
+        if (value >= 18 && !newError) setAgeError(null);
+        else if (newError) setAgeError(newError);
+
+        setFormData(prev => ({
+            ...prev,
+            preferences: {
+                ...prev.preferences,
+                age_range: { ...prev.preferences.age_range, [type]: value }
+            }
+        }));
+    };
+
+    // 2. Hàm xử lý khi người dùng nhập xong (Click ra ngoài ô input)
+    const handleAgeBlur = (type: 'min' | 'max') => {
+        let value = formData.preferences.age_range[type];
+
+        // Nếu nhập NaN (xóa trắng) hoặc nhỏ hơn 18 -> Tự động sửa về 18
+        if (isNaN(value) || value < 18) {
+            value = 18;
+            // Cập nhật lại state với giá trị hợp lệ
+            updateAgeRange(type, value);
+        }
     };
     const toggleGenderPref = (gender: string) => {
         setFormData(prev => {
@@ -189,6 +235,13 @@ export default function EditProfilePage() {
         setError(null);
         setFieldErrors({});
 
+        if (ageError) {
+            setError("Vui lòng sửa lỗi độ tuổi trước khi lưu.");
+            setSaving(false);
+            window.scrollTo({ top: 0, behavior: "smooth" }); // Cuộn lên để thấy lỗi
+            return;
+        }
+
         const newErrors: Partial<Record<keyof ProfileFormData, boolean>> = {};
         let hasError = false;
         if (!formData.avatar_url) { newErrors.avatar_url = true; hasError = true; }
@@ -206,6 +259,7 @@ export default function EditProfilePage() {
             window.scrollTo({ top: 0, behavior: "smooth" });
             return;
         }
+
 
         try {
             const result = await updateUserProfile(formData as unknown as Partial<UserProfile>);
@@ -227,6 +281,7 @@ export default function EditProfilePage() {
         const normalClass = "border-gray-300 focus:ring-pink-500 dark:border-gray-600";
         return `${baseClass} ${fieldErrors[fieldName] ? errorClass : normalClass}`;
     };
+
 
     if (loading) return <div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-pink-500"></div></div>;
 
@@ -391,14 +446,32 @@ export default function EditProfilePage() {
                                         <div className="flex items-center gap-4">
                                             <div className="flex-1">
                                                 <span className="text-xs text-gray-500">Từ</span>
-                                                <input type="number" min="18" max="100" value={formData.preferences.age_range.min} onChange={(e) => updateAgeRange('min', parseInt(e.target.value))} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:text-white" />
+                                                <input
+                                                    type="number"
+                                                    min="18"
+                                                    max="50"
+                                                    value={formData.preferences.age_range.min || ''} // Handle NaN/Empty visual
+                                                    onChange={(e) => updateAgeRange('min', parseInt(e.target.value) || 0)}
+                                                    onBlur={() => handleAgeBlur('min')} // <--- THÊM SỰ KIỆN NÀY
+                                                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:text-white"
+                                                />
                                             </div>
                                             <span className="text-gray-400">-</span>
                                             <div className="flex-1">
                                                 <span className="text-xs text-gray-500">Đến</span>
-                                                <input type="number" min="18" max="100" value={formData.preferences.age_range.max} onChange={(e) => updateAgeRange('max', parseInt(e.target.value))} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:text-white" />
+                                                <input
+                                                    type="number"
+                                                    min="18"
+                                                    max="50"
+                                                    value={formData.preferences.age_range.max || ''}
+                                                    onChange={(e) => updateAgeRange('max', parseInt(e.target.value) || 0)}
+                                                    onBlur={() => handleAgeBlur('max')} // <--- THÊM SỰ KIỆN NÀY
+                                                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm dark:bg-gray-600 dark:text-white"
+                                                />
                                             </div>
                                         </div>
+                                        {/* HIỂN THỊ LỖI ĐỘ TUỔI */}
+                                        {ageError && <p className="text-xs text-red-500 mt-2 font-medium">{ageError}</p>}
                                     </div>
 
                                     {/* Gender Pref */}

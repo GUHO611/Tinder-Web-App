@@ -88,12 +88,12 @@ export default function ChatPage() {
     );
   }
 
-  const defaultAvatarUrl = "default-avatar.png";
+  const defaultAvatarUrl = "/default-avatar.png";
 
   const handleAvatarClick = (e: React.MouseEvent, userId: string) => {
-    e.preventDefault(); // Ngăn Link cha kích hoạt
-    e.stopPropagation(); // Ngăn sự kiện nổi bọt lên Link cha
-    router.push(`/profile/${userId}`) // Chuyển hướng sang t rang profile
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/profile/${userId}`);
   };
 
   return (
@@ -136,7 +136,8 @@ export default function ChatPage() {
                   className="group block bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-200 border border-transparent hover:border-pink-200 dark:hover:border-pink-900"
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="relative flex-shrink-0">
+                    <div className="relative flex-shrink-0 cursor-pointer z-10"
+                      onClick={(e) => handleAvatarClick(e, chat.user.id)}>
                       <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-gray-100 dark:border-gray-700">
                         <div>
                           <img
@@ -152,7 +153,7 @@ export default function ChatPage() {
                           {/* Chấm tròn chính */}
                           <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
                         </div>
-                        
+
                         {chat.unreadCount > 0 && (
                           <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
                             {chat.unreadCount}
@@ -164,7 +165,8 @@ export default function ChatPage() {
                     <div className="flex-1 min-w-0 ml-4">
                       <div className="flex items-center justify-between mb-1">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate hover:text-pink-500 cursor-pointer transition-colors z-10 relative"
+                            onClick={(e) => handleAvatarClick(e, chat.user.id)}>
                             {chat.user.full_name}
                           </h3>
                         </div>

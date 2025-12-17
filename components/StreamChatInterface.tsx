@@ -1,6 +1,6 @@
 "use client";
 
-import { UserProfile } from "@/app/profile/page";
+import { UserProfile } from "@/lib/actions/profile";
 import {
   createOrGetChannel,
   createVideoCall,
