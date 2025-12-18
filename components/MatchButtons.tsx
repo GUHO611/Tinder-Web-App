@@ -1,21 +1,38 @@
 interface MatchButtonsProps {
     onLike: () => void;
     onPass: () => void;
-    disabled?: boolean; // Thêm prop disabled để chặn click khi đang load
+    disabled?: boolean;
+    swipeDir?: string | null; // Nhận hướng vuốt từ component cha ('left' | 'right' | null)
 }
 
-export default function MatchButtons({ onLike, onPass, disabled = false }: MatchButtonsProps) {
+export default function MatchButtons({
+    onLike,
+    onPass,
+    disabled = false,
+    swipeDir = null, // Mặc định là null (chưa vuốt)
+}: MatchButtonsProps) {
+    // Kiểm tra trạng thái active dựa trên hướng vuốt
+    const isLikeActive = swipeDir === "right";
+    const isPassActive = swipeDir === "left";
+
     return (
-        <div className="flex items-center justify-center gap-8 py-4">
-            {/* Nút Bỏ qua (Pass) */}
+        <div className="flex items-center justify-center gap-6 py-4 pointer-events-auto">
+
+            {/* --- NÚT BỎ QUA (PASS) --- */}
             <button
                 onClick={onPass}
                 disabled={disabled}
-                className="group relative w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-500 transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`group relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+          ${isPassActive
+                        ? "bg-red-500 border-red-500 scale-110 shadow-red-500/50 shadow-lg" // Khi đang vuốt trái
+                        : "bg-black/40 backdrop-blur-md border-2 border-red-500 hover:bg-red-500 hover:border-red-500 hover:scale-110 hover:shadow-lg" // Bình thường
+                    }
+        `}
                 aria-label="Pass"
             >
                 <svg
-                    className="w-8 h-8 text-red-500 transition-transform group-hover:-rotate-12"
+                    className={`w-8 h-8 transition-colors duration-300 ${isPassActive ? "text-white" : "text-red-500 group-hover:text-white"
+                        }`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
                 >
@@ -27,15 +44,28 @@ export default function MatchButtons({ onLike, onPass, disabled = false }: Match
                 </svg>
             </button>
 
-            {/* Nút Thích (Like) */}
+            {/* --- NÚT THÍCH (LIKE) --- */}
             <button
                 onClick={onLike}
                 disabled={disabled}
-                className="group relative w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center border-2 border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-500 transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`group relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden
+          ${isLikeActive
+                        ? "bg-green-500 border-green-500 scale-110 shadow-green-500/50 shadow-lg" // Khi đang vuốt phải
+                        : "bg-black/40 backdrop-blur-md border-2 border-green-500 hover:bg-green-500 hover:border-green-500 hover:scale-110 hover:shadow-lg" // Bình thường
+                    }
+        `}
                 aria-label="Like"
             >
+                {/* Hiệu ứng lan tỏa từ bên trong (Ripple Effect giả lập bằng CSS) */}
+                <span
+                    className={`absolute inset-0 rounded-full bg-green-400 opacity-0 transition-all duration-500 ease-out
+                ${isLikeActive ? "animate-ping opacity-30" : "group-hover:animate-ping group-hover:opacity-30"}
+            `}
+                ></span>
+
                 <svg
-                    className="w-8 h-8 text-green-500 transition-transform group-hover:scale-110"
+                    className={`w-8 h-8 transition-colors duration-300 relative z-10 ${isLikeActive ? "text-white scale-110" : "text-green-500 group-hover:text-white"
+                        }`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
                 >
@@ -45,10 +75,6 @@ export default function MatchButtons({ onLike, onPass, disabled = false }: Match
                         clipRule="evenodd"
                     />
                 </svg>
-                {/* Hiệu ứng tim bay lên khi hover (Optional CSS) */}
-                <span className="absolute -top-10 opacity-0 group-hover:opacity-100 group-hover:-translate-y-2 transition-all duration-500 text-2xl">
-                    ❤️
-                </span>
             </button>
         </div>
     );
