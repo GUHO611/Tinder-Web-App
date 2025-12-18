@@ -55,7 +55,7 @@ export default function MatchNotification({
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-red-600">
-                                Ghép dôi mới! 🎉
+                                Tương hợp mới! 🎉
                             </h3>
                             <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
