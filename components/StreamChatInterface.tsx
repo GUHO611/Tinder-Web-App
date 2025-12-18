@@ -1,3 +1,4 @@
+// components/StreamChatInterface.tsx
 "use client";
 
 import { UserProfile } from "@/lib/actions/profile";
@@ -14,12 +15,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { Channel, Event, StreamChat, MessageResponse } from "stream-chat"; // Import MessageResponse
+import { Channel, Event, StreamChat } from "stream-chat";
 import VideoCall from "./VideoCall";
 
-// --- 1. ĐỊNH NGHĨA CÁC INTERFACE ---
-
-// Interface cho tin nhắn hiển thị ở Client
 interface Message {
   id: string;
   text: string;
@@ -28,8 +26,6 @@ interface Message {
   user_id: string;
 }
 
-// Interface cho dữ liệu cuộc gọi đính kèm trong tin nhắn
-// Kế thừa Record<string, unknown> để tương thích với kiểu dữ liệu của StreamChat
 interface VideoCallCustomData extends Record<string, unknown> {
   call_id?: string;
   caller_id?: string;
@@ -134,6 +130,8 @@ export default function StreamChatInterface({
         const chatChannel = chatClient.channel(channelType!, channelId);
         await chatChannel.watch();
 
+        await chatChannel.markRead();
+
         const state = await chatChannel.query({ messages: { limit: 50 } });
 
         const convertedMessages: Message[] = state.messages.map((msg) => ({
@@ -148,14 +146,9 @@ export default function StreamChatInterface({
 
         chatChannel.on("message.new", (event: Event) => {
           if (event.message) {
-            // Check tin nhắn mời gọi video
             if (event.message.text?.includes(`📹 Video call invitation`)) {
-
-              // --- THAY THẾ ANY ---
-              // Ép kiểu an toàn sang interface VideoCallCustomData
               const customData = event.message as unknown as VideoCallCustomData;
 
-              // Chỉ hiện thông báo cho người nhận (ID khác người gửi)
               if (customData.caller_id && customData.caller_id !== userId) {
                 setIncomingCallId(customData.call_id || "");
                 setCallerName(customData.caller_name || "Someone");
@@ -178,7 +171,6 @@ export default function StreamChatInterface({
                 if (!messageExists) {
                   return [...prev, newMsg];
                 }
-
                 return prev;
               });
             }
@@ -217,6 +209,12 @@ export default function StreamChatInterface({
     };
   }, [otherUser]);
 
+  useEffect(() => {
+    if (channel) {
+      channel.markRead();
+    }
+  }, [channel]);
+
   async function handleVideoCall() {
     try {
       const { callId } = await createVideoCall(otherUser.id);
@@ -225,8 +223,6 @@ export default function StreamChatInterface({
       setIsCallInitiator(true);
 
       if (channel) {
-        // --- THAY THẾ ANY ---
-        // Tạo object đúng kiểu VideoCallCustomData
         const messageData: VideoCallCustomData = {
           text: `📹 Video call invitation`,
           call_id: callId,
@@ -234,8 +230,6 @@ export default function StreamChatInterface({
           caller_name: otherUser.full_name || "Someone",
         };
 
-        // Stream Chat sendMessage chấp nhận Record<string, unknown> cho custom fields
-        // Chúng ta ép kiểu về Record<string, unknown> để TypeScript không báo lỗi thiếu các trường mặc định của Message
         await channel.sendMessage(messageData as unknown as Record<string, unknown>);
       }
     } catch (error) {
@@ -268,7 +262,6 @@ export default function StreamChatInterface({
           if (!messageExists) {
             return [...prev, message];
           }
-
           return prev;
         });
 

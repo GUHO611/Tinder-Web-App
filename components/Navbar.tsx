@@ -1,3 +1,4 @@
+// components/Navbar.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -5,52 +6,58 @@ import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { gsap } from "gsap";
+import { getGlobalStreamClient } from "@/lib/stream-chat-client";
 
-// --- 1. ĐỊNH NGHĨA LIST ICON & MENU ITEMS VỚI MÀU RIÊNG ---
 const NAV_ITEMS = [
     {
         label: "Khám Phá",
         href: "/matches",
-        // Cam - Đỏ (Năng động, Lửa)
         activeGradient: "from-orange-500 to-red-500",
         hoverText: "group-hover:text-orange-500",
         icon: (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
         )
     },
     {
         label: "Ghép Đôi",
         href: "/matches/list",
-        // Hồng - Tím (Lãng mạn)
         activeGradient: "from-pink-500 to-purple-500",
         hoverText: "group-hover:text-pink-500",
         icon: (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
         )
     },
     {
         label: "Tin Nhắn",
         href: "/chat",
-        // Xanh Dương - Cyan (Giao tiếp)
         activeGradient: "from-blue-500 to-cyan-500",
         hoverText: "group-hover:text-blue-500",
         icon: (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            <div className="relative">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <TotalUnreadBadge />
+            </div>
         )
     },
     {
         label: "Hồ Sơ",
         href: "/profile",
-        // Xanh Lá - Emerald (Cá nhân)
         activeGradient: "from-green-500 to-emerald-500",
         hoverText: "group-hover:text-green-500",
         icon: (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
         )
     },
 ];
 
-// --- 2. COMPONENT NAVLINK ---
 interface NavLinkProps {
     href: string;
     label: string;
@@ -73,14 +80,13 @@ const NavLink = ({
     const pathname = usePathname();
     const isActive = pathname === href;
 
-    // --- GIAO DIỆN MOBILE ---
     if (mobile) {
         return (
             <Link
                 href={href}
                 onClick={onClick}
                 className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group relative overflow-hidden ${isActive
-                    ? "bg-gray-50 dark:bg-gray-800/50 shadow-inner" // Nền active nhẹ
+                    ? "bg-gray-50 dark:bg-gray-800/50 shadow-inner"
                     : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                     }`}
             >
@@ -105,7 +111,6 @@ const NavLink = ({
         );
     }
 
-    // --- GIAO DIỆN DESKTOP ---
     return (
         <Link
             href={href}
@@ -133,6 +138,66 @@ const NavLink = ({
         </Link>
     );
 };
+
+function TotalUnreadBadge() {
+  const [unread, setUnread] = useState(0);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const client = await getGlobalStreamClient();
+        setUnread(client.user?.total_unread_count || 0);
+
+        const handleUpdate = () => {
+          setUnread(client.user?.total_unread_count || 0);
+        };
+
+        client.on("message.new", handleUpdate);
+        client.on("message.read", handleUpdate);
+        client.on("notification.mark_read", handleUpdate);
+        client.on("notification.message_new", handleUpdate);
+
+        return () => {
+          client.off("message.new", handleUpdate);
+          client.off("message.read", handleUpdate);
+          client.off("notification.mark_read", handleUpdate);
+          client.off("notification.message_new", handleUpdate);
+        };
+      } catch (error) {
+        console.error("Total unread badge error:", error);
+      }
+    }
+
+    init();
+  }, []);
+
+  // Khi đang ở trang /chat (danh sách tin nhắn), tự động mark all read nếu có unread
+  useEffect(() => {
+    if (pathname === "/chat" && unread > 0) {
+      async function markAllRead() {
+        try {
+          const client = await getGlobalStreamClient();
+          const channels = await client.queryChannels({ unread_count: { $gt: 0 } });
+          for (const ch of channels) {
+            await ch.markRead();
+          }
+        } catch (error) {
+          console.error("Mark all read error:", error);
+        }
+      }
+      markAllRead();
+    }
+  }, [pathname, unread]);
+
+  if (unread === 0) return null;
+
+  return (
+    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center shadow-lg animate-pulse">
+      {unread > 99 ? "99+" : unread}
+    </span>
+  );
+}
 
 export default function Navbar() {
     const { signOut, user } = useAuth();
@@ -191,9 +256,9 @@ export default function Navbar() {
 
     const handleSignOut = async () => {
         try {
-            await signOut(); // Chờ xử lý đăng xuất từ context (xoá token, v.v.)
-            router.push("/"); // Chuyển hướng về trang chủ
-            router.refresh(); // (Tuỳ chọn) Làm mới lại dữ liệu trang để đảm bảo UI cập nhật sạch sẽ
+            await signOut();
+            router.push("/");
+            router.refresh();
         } catch (error) {
             console.error("Lỗi khi đăng xuất:", error);
         }
@@ -204,7 +269,6 @@ export default function Navbar() {
             <div className="container mx-auto px-6">
                 <div className="flex items-center justify-between h-16">
 
-                    {/* 1. LOGO */}
                     <Link
                         href="/"
                         ref={logoRef}
@@ -212,7 +276,7 @@ export default function Navbar() {
                     >
                         <div className="bg-gradient-to-tr from-pink-500 to-orange-500 p-1.5 rounded-xl text-white transform transition-transform group-hover:rotate-12 duration-300 shadow-lg shadow-pink-500/30">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                                <path fillRule="evenodd" d="M12.963 2.286a.75.75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.177A7.547 7.547 0 016.648 6.61a.75.75 0 00-1.152-.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clipRule="evenodd" />
+                                <path fillRule="evenodd" d="M12.963 2.286a.75 .75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.177A7.547 7.547 0 016.648 6.61a.75 .75 0 00-1.152-.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clipRule="evenodd" />
                             </svg>
                         </div>
                         <span className="text-xl font-extrabold bg-gradient-to-r from-pink-600 to-orange-500 bg-clip-text text-transparent tracking-tight">
@@ -220,7 +284,6 @@ export default function Navbar() {
                         </span>
                     </Link>
 
-                    {/* 2. DESKTOP MENU */}
                     {user && (
                         <div
                             ref={navItemsRef}
@@ -232,7 +295,6 @@ export default function Navbar() {
                         </div>
                     )}
 
-                    {/* 3. RIGHT ACTIONS */}
                     <div className="flex items-center gap-3">
                         <div className="hidden md:block">
                             {user ? (
@@ -260,7 +322,6 @@ export default function Navbar() {
                             )}
                         </div>
 
-                        {/* Mobile Hamburger Button */}
                         {user && (
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -277,7 +338,6 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* 4. MOBILE MENU DROPDOWN */}
             <div
                 ref={mobileMenuRef}
                 className="md:hidden overflow-hidden h-0 opacity-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 absolute w-full left-0 top-16 shadow-2xl rounded-b-3xl"

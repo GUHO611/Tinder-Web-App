@@ -3,7 +3,6 @@
 import { UserProfile } from "@/lib/actions/profile";
 import ChatHeader from "@/components/ChatHeader";
 import StreamChatInterface from "@/components/StreamChatInterface";
-import VideoCall from "@/components/VideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import { getUserMatches } from "@/lib/actions/matches";
 import { useParams, useRouter } from "next/navigation";
@@ -12,8 +11,11 @@ import { useEffect, useRef, useState } from "react";
 export default function ChatConversationPage() {
   const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [inCall, setInCall] = useState(false);
-  const [currentCallId, setCurrentCallId] = useState<string>("");
+  
+  // Lưu ý: Các state quản lý cuộc gọi (inCall, currentCallId) đã được loại bỏ 
+  // vì StreamChatInterface hiện đã tự quản lý hiển thị VideoCall thông qua 
+  // hệ thống tin nhắn tín hiệu (Signaling).
+
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
@@ -45,16 +47,6 @@ export default function ChatConversationPage() {
 
   const handleVideoCallFromHeader = () => {
     chatInterfaceRef.current?.handleVideoCall();
-  };
-
-  const handleCallStart = (callId: string) => {
-    setCurrentCallId(callId);
-    setInCall(true);
-  };
-
-  const handleCallEnd = () => {
-    setInCall(false);
-    setCurrentCallId("");
   };
 
   if (loading) {
@@ -107,17 +99,14 @@ export default function ChatConversationPage() {
           <StreamChatInterface
             otherUser={otherUser}
             ref={chatInterfaceRef}
-            onCallStart={handleCallStart}
           />
         </div>
 
-        {/* OVERLAY VIDEO CALL */}
-        {inCall && currentCallId && (
-          <VideoCall
-            callId={currentCallId}
-            onCallEnd={handleCallEnd}
-          />
-        )}
+        {/* Ghi chú: Đoạn OVERLAY VIDEO CALL trước đây ở đây đã được xóa bỏ. 
+            Việc hiển thị VideoCall hiện được xử lý bên trong StreamChatInterface 
+            để đảm bảo tính năng "Chấp nhận mới vào phòng" và "Cùng thoát khi tắt máy" 
+            hoạt động chính xác.
+        */}
       </div>
     </div>
   );
