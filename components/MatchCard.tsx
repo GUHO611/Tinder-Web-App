@@ -10,7 +10,7 @@ export default function MatchCard({ user }: { user: UserProfile }) {
             : "/default-avatar.png"; // Đảm bảo bạn có file này trong thư mục public/
 
     return (
-        <div className="relative w-full max-w-sm mx-auto shadow-2xl rounded-3xl overflow-hidden bg-white dark:bg-gray-800 h-[600px] sm:h-[650px]">
+        <div className="relative w-full max-w-sm mx-auto shadow-2xl rounded-3xl overflow-hidden bg-white dark:bg-gray-800 h-full">
             <div className="card-swipe w-full h-full relative group">
                 {/* Ảnh đại diện */}
                 <Image
