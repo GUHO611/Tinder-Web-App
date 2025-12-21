@@ -43,13 +43,24 @@ export default function ChatHeader({ user, onVideoCall }: ChatHeaderProps) {
                   alt={user.full_name}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center z-20">
-                  {/* Vòng nhấp nháy tỏa ra */}
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
 
-                  {/* Chấm tròn chính */}
-                  <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
-                </div>
+                {user.is_online ? (
+                  <div className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center z-20">
+                    {/* Vòng nhấp nháy tỏa ra */}
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+
+                    {/* Chấm tròn chính */}
+                    <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+                  </div>
+                ) : (
+                  // Tùy chọn: Hiển thị thời gian hoạt động gần nhất nếu offline
+                  user.last_active && (
+                    <div className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center z-20">
+                      {/* Chấm tròn chính */}
+                      <div className="relative w-4 h-4 bg-gray-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+                    </div>
+                  )
+                )}
               </div>
             </div>
 

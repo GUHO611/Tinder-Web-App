@@ -1,241 +1,224 @@
-// app/chat/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { getUserMatches } from "@/lib/actions/matches";
+import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
-import { UserProfile } from "@/lib/actions/profile";
-import { useRouter } from "next/navigation";
-import { getGlobalStreamClient } from "@/lib/stream-chat-client";
-import { createOrGetChannel } from "@/lib/actions/stream";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
 
-interface ChatData {
-  id: string;
-  user: UserProfile;
-  lastMessage?: string;
-  lastMessageTime?: string;
-  unreadCount: number;
-  channel: any;
-}
+// MUI Components & Icons
+import { Button, CircularProgress, Container, Typography, Box } from "@mui/material";
+import ExploreIcon from "@mui/icons-material/Explore";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import PersonIcon from "@mui/icons-material/Person";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import VideocamIcon from '@mui/icons-material/Videocam'; // Thay icon livestream bằng icon video/cam nhẹ nhàng hơn
 
-export default function ChatPage() {
-  const [chats, setChats] = useState<ChatData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+export default function Home() {
+  const { user, loading } = useAuth();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadChats() {
-      try {
-        const client = await getGlobalStreamClient();
-        const userMatches = await getUserMatches();
-
-        const chatPromises = userMatches.map(async (match) => {
-          const { channelId } = await createOrGetChannel(match.id);
-          const channel = client.channel("messaging", channelId);
-          await channel.watch();
-
-          const messages = channel.state.messages || [];
-          const lastMsg = messages[messages.length - 1];
-
-          return {
-            id: match.id,
-            user: match,
-            lastMessage: lastMsg?.text || "Bắt đầu cuộc trò chuyện của bạn!",
-            lastMessageTime: lastMsg?.created_at || match.created_at,
-            unreadCount: channel.countUnread(),
-            channel,
-          };
-        });
-
-        let resolvedChats = await Promise.all(chatPromises);
-
-        resolvedChats = resolvedChats.sort((a, b) => {
-          const timeA = a.lastMessageTime || a.user.created_at || "0";
-          const timeB = b.lastMessageTime || b.user.created_at || "0";
-          return new Date(timeB).getTime() - new Date(timeA).getTime();
-        });
-
-        setChats(resolvedChats);
-      } catch (error) {
-        console.error("Error loading chats:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadChats();
-  }, []);
-
-  useEffect(() => {
-    async function setupRealtime() {
-      try {
-        const client = await getGlobalStreamClient();
-
-        const handleUpdate = () => {
-          setChats((prev) =>
-            prev
-              .map((chat) => ({
-                ...chat,
-                unreadCount: chat.channel.countUnread(),
-                lastMessage:
-                  (chat.channel.state.messages || [])[
-                    (chat.channel.state.messages || []).length - 1
-                  ]?.text || chat.lastMessage,
-                lastMessageTime:
-                  (chat.channel.state.messages || [])[
-                    (chat.channel.state.messages || []).length - 1
-                  ]?.created_at || chat.lastMessageTime,
-              }))
-              .sort((a, b) => {
-                const timeA = a.lastMessageTime || a.user.created_at || "0";
-                const timeB = b.lastMessageTime || b.user.created_at || "0";
-                return new Date(timeB).getTime() - new Date(timeA).getTime();
-              })
-          );
-        };
-
-        client.on("message.new", handleUpdate);
-        client.on("message.read", handleUpdate);
-        client.on("notification.mark_read", handleUpdate);
-
-        return () => {
-          client.off("message.new", handleUpdate);
-          client.off("message.read", handleUpdate);
-          client.off("notification.mark_read", handleUpdate);
-        };
-      } catch (error) {
-        console.error("Realtime setup error:", error);
-      }
-    }
-
-    setupRealtime();
-  }, []);
-
-  function formatTime(timestamp?: string) {
-    if (!timestamp) return "Vừa xong";
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInSeconds = Math.floor(diffInMs / 1000);
-
-    if (diffInSeconds < 60) return "Vừa xong";
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút trước`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} ngày trước`;
-
-    return date.toLocaleDateString("vi-VN", {
-      day: "numeric",
-      month: "numeric",
-      year: "numeric",
-    });
-  }
-
-  const defaultAvatarUrl = "/default-avatar.png";
-
-  const handleAvatarClick = (e: React.MouseEvent, userId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    router.push(`/profile/${userId}`);
-  };
+    if (loading) return;
+    const ctx = gsap.context(() => {
+      gsap.from(".hero-content > *", {
+        y: 30,
+        opacity: 0,
+        duration: 1,
+        stagger: 0.2,
+        ease: "power3.out",
+      });
+    }, containerRef);
+    return () => ctx.revert();
+  }, [loading]);
 
   if (loading) {
     return (
-      <div className="h-full min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">
-            Đang tải tin nhắn...
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <CircularProgress sx={{ color: '#ec4899' }} size={40} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Tin nhắn
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {chats.length} cuộc trò chuyện
-          </p>
-        </header>
-
-        {chats.length === 0 ? (
-          <div className="text-center max-w-md mx-auto p-8">
-            <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">💬</span>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Chưa có cuộc trò chuyện nào
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Hãy bắt đầu vuốt để tìm người phù hợp và bắt đầu trò chuyện!
-            </p>
-            <Link
-              href="/matches"
-              className="bg-gradient-to-r from-pink-500 to-red-500 text-white font-semibold py-3 px-6 rounded-full hover:from-pink-600 hover:to-red-600 transition-all duration-200"
-            >
-              Bắt đầu vuốt
-            </Link>
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto">
-            <div className="grid space-y-4">
-              {chats.map((chat) => (
-                <Link
-                  key={chat.id}
-                  href={`/chat/${chat.id}`}
-                  className="group block bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-xl transition-all duration-200 border border-transparent hover:border-pink-200 dark:hover:border-pink-900"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="relative flex-shrink-0 cursor-pointer z-10"
-                      onClick={(e) => handleAvatarClick(e, chat.user.id)}>
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-gray-100 dark:border-gray-700">
-                        <img
-                          src={chat.user.avatar_url || defaultAvatarUrl}
-                          alt={chat.user.full_name}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute bottom-1 right-1 flex items-center justify-center z-20">
-                          <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
-                          <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
-                        </div>
-
-                        {chat.unreadCount > 0 && (
-                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-6 h-6 flex items-center justify-center shadow-lg">
-                            {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0 ml-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3
-                          className="text-lg font-semibold text-gray-900 dark:text-white truncate hover:text-pink-500 cursor-pointer transition-colors"
-                          onClick={(e) => handleAvatarClick(e, chat.user.id)}
-                        >
-                          {chat.user.full_name}
-                        </h3>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-                          {formatTime(chat.lastMessageTime)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {chat.lastMessage}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-[#ffffff] dark:bg-[#070b14] overflow-hidden relative"
+      style={{ fontFamily: '"Be Vietnam Pro", sans-serif' }}
+    >
+      {/* Background Decor */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-rose-500/5 blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-500/5 blur-[100px] rounded-full" />
       </div>
+
+      <Container maxWidth="lg" className="relative z-10 px-4 py-32 text-center">
+        <Box className="hero-content max-w-4xl mx-auto flex flex-col items-center">
+          
+          {/* Badge mới: Ngắn gọn, không dùng từ livestream */}
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 mb-12 shadow-sm">
+            <VideocamIcon className="text-rose-500" sx={{ fontSize: 16 }} />
+            <Typography className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-600 dark:text-slate-300">
+              Vượt xa những cú quẹt • Chạm thực tế
+            </Typography>
+          </div>
+
+          {/* Header: Đã giảm size (từ 8xl xuống 6xl) và tinh chỉnh khoảng cách */}
+          <Typography
+            variant="h1"
+            className="text-4xl md:text-5xl lg:text-6xl font-[900] text-slate-900 dark:text-white mb-10 tracking-tight"
+            style={{ lineHeight: 1.2 }}
+          >
+            Đập tan rào cản <br />
+            <span className="bg-gradient-to-r from-rose-500 to-indigo-600 bg-clip-text text-transparent">
+              Kết nối trực tiếp
+            </span>
+          </Typography>
+
+          <Typography
+            variant="h5"
+            className="text-slate-500 dark:text-slate-400 mb-16 max-w-xl mx-auto text-base md:text-lg font-medium leading-relaxed"
+          >
+            Tạm biệt những tấm ảnh tĩnh vô hồn. <br />
+            Nơi bạn gặp gỡ và trò chuyện qua những khoảnh khắc chân thực nhất của đối phương.
+          </Typography>
+
+          {/* Buttons Area: Giữ nguyên 2 nút của bạn nhưng tăng Margin Top (mt-10) */}
+          <Box className="flex flex-col sm:flex-row gap-5 justify-center items-center w-full mt-10">
+            {user ? (
+              <>
+                <Link href="/matches" passHref className="w-full sm:w-auto">
+                  <Button
+                    variant="contained" size="large" fullWidth endIcon={<FavoriteIcon />}
+                    sx={{
+                      background: "linear-gradient(45deg, #ec4899 30%, #9333ea 90%)",
+                      borderRadius: "50px",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
+                      fontWeight: "bold",
+                      textTransform: "none",
+                      boxShadow: "0 10px 20px -10px rgba(236, 72, 153, 0.5)",
+                      "&:hover": {
+                        background: "linear-gradient(45deg, #db2777 30%, #7e22ce 90%)",
+                        transform: "translateY(-3px)",
+                      },
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    Bắt Đầu Khám Phá
+                  </Button>
+                </Link>
+
+                <Link href="/profile" passHref className="w-full sm:w-auto">
+                  <Button
+                    variant="outlined" size="large" fullWidth startIcon={<PersonIcon />}
+                    sx={{
+                      borderRadius: "50px",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
+                      fontWeight: "bold",
+                      textTransform: "none",
+                      borderColor: "#ec4899",
+                      color: "#ec4899",
+                      borderWidth: "2px",
+                      "&:hover": {
+                        borderColor: "#db2777",
+                        backgroundColor: "rgba(236, 72, 153, 0.05)",
+                        borderWidth: "2px",
+                        transform: "translateY(-3px)",
+                      },
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    Xem Hồ Sơ
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/auth" passHref className="w-full sm:w-auto">
+                  <Button
+                    variant="contained" size="large" fullWidth startIcon={<PlayArrowIcon />}
+                    sx={{
+                      background: "linear-gradient(45deg, #ec4899 30%, #9333ea 90%)",
+                      borderRadius: "50px",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
+                      fontWeight: "bold",
+                      textTransform: "none",
+                      boxShadow: "0 10px 20px -10px rgba(236, 72, 153, 0.5)",
+                      "&:hover": {
+                        background: "linear-gradient(45deg, #db2777 30%, #7e22ce 90%)",
+                        transform: "translateY(-3px)",
+                      },
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    Bắt Đầu Ngay
+                  </Button>
+                </Link>
+
+                <Link href="#tinh-nang" passHref className="w-full sm:w-auto">
+                  <Button
+                    variant="outlined" size="large" fullWidth startIcon={<ExploreIcon />}
+                    sx={{
+                      borderRadius: "50px",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
+                      fontWeight: "bold",
+                      textTransform: "none",
+                      borderColor: "#ec4899",
+                      color: "#ec4899",
+                      borderWidth: "2px",
+                      "&:hover": {
+                        borderColor: "#db2777",
+                        backgroundColor: "rgba(236, 72, 153, 0.05)",
+                        borderWidth: "2px",
+                        transform: "translateY(-3px)",
+                      },
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    Tìm Hiểu Thêm
+                  </Button>
+                </Link>
+              </>
+            )}
+          </Box>
+        </Box>
+      </Container>
+
+      {/* Feature Section */}
+      <Box className="py-24">
+        <Container id="tinh-nang" maxWidth="lg">
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard 
+              emoji="✨" 
+              title="Hiện diện thực" 
+              desc="Không còn lo ngại về hồ sơ giả mạo. Mọi cuộc gặp gỡ đều diễn ra qua video trực tiếp." 
+            />
+            <FeatureCard 
+              emoji="🎯" 
+              title="Đúng tần số" 
+              desc="Hệ thống ghép đôi thông minh đưa bạn đến với những người có cùng phong cách sống." 
+            />
+            <FeatureCard 
+              emoji="🔒" 
+              title="An toàn tuyệt đối" 
+              desc="Công nghệ bảo mật giúp trải nghiệm kết nối của bạn luôn riêng tư và lành mạnh." 
+            />
+          </div>
+        </Container>
+      </Box>
+    </div>
+  );
+}
+
+function FeatureCard({ emoji, title, desc }: { emoji: string; title: string; desc: string }) {
+  return (
+    <div className="p-8 bg-slate-50/50 dark:bg-slate-900/30 rounded-[24px] border border-slate-100 dark:border-white/5 hover:border-rose-500/20 transition-all duration-300">
+      <div className="text-3xl mb-5">{emoji}</div>
+      <h3 className="text-lg font-bold mb-3 text-slate-900 dark:text-white">{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }

@@ -9,71 +9,32 @@ import gsap from "gsap";
 import { Button, CircularProgress, Container, Typography, Box } from "@mui/material";
 import ExploreIcon from "@mui/icons-material/Explore";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import LoginIcon from "@mui/icons-material/Login"; // Giữ lại nếu cần dùng sau này
 import PersonIcon from "@mui/icons-material/Person";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import VideocamIcon from '@mui/icons-material/Videocam'; // Thay icon livestream bằng icon video/cam nhẹ nhàng hơn
 
 export default function Home() {
   const { user, loading } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
-  const heartsRef = useRef<HTMLDivElement>(null);
 
-  // GSAP Animations
-  // Thay thế đoạn useEffect cũ bằng đoạn này
   useEffect(() => {
     if (loading) return;
-
     const ctx = gsap.context(() => {
-      // 1. Text Animation (Giữ nguyên hoặc chỉnh nhanh hơn)
-      gsap.from(".hero-text", {
-        y: 30, // Giảm khoảng cách trượt cho mượt
+      gsap.from(".hero-content > *", {
+        y: 30,
         opacity: 0,
         duration: 1,
-        stagger: 0.1, // Nhanh hơn
+        stagger: 0.2,
         ease: "power3.out",
       });
-
-      // 2. Button Animation (ĐÃ SỬA: An toàn hơn)
-      // Dùng set ban đầu để đảm bảo trạng thái, sau đó dùng to
-      gsap.set(".hero-btn", { opacity: 0, scale: 0.8 });
-
-      gsap.to(".hero-btn", {
-        scale: 1,
-        opacity: 1,
-        duration: 0.8,
-        delay: 0.3, // Giảm delay từ 0.8 xuống 0.3 để nút hiện sớm hơn
-        stagger: 0.1,
-        ease: "elastic.out(1, 0.6)",
-        clearProps: "opacity,scale" // Quan trọng: Xóa style sau khi xong để tránh lỗi CSS về sau
-      });
-
-      // 3. Hearts (Giữ nguyên logic cũ)
-      const hearts = gsap.utils.toArray(".heart-bg") as HTMLElement[];
-      hearts.forEach((heart) => {
-        gsap.set(heart, {
-          left: Math.random() * 100 + "%",
-          fontSize: Math.random() * 30 + 20 + "px",
-        });
-        gsap.to(heart, {
-          y: "random(-100, -200)",
-          x: "random(-50, 50)",
-          rotation: "random(-45, 45)",
-          opacity: 0,
-          duration: "random(3, 6)",
-          repeat: -1,
-          ease: "none",
-          delay: "random(0, 2)",
-        });
-      });
     }, containerRef);
-
     return () => ctx.revert();
-  }, [loading]); // Lưu ý: Nếu user thay đổi mà không loading lại, animation có thể không chạy lại đúng nút.
+  }, [loading]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <CircularProgress color="secondary" size={60} thickness={4} />
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <CircularProgress sx={{ color: '#ec4899' }} size={40} />
       </div>
     );
   }
@@ -81,83 +42,64 @@ export default function Home() {
   return (
     <div
       ref={containerRef}
-      className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 items-center justify-center overflow-hidden relative"
+      className="min-h-screen bg-[#ffffff] dark:bg-[#070b14] overflow-hidden relative"
+      style={{ fontFamily: '"Be Vietnam Pro", sans-serif' }}
     >
-      {/* Background Hearts */}
-      <div ref={heartsRef} className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(10)].map((_, i) => (
-          <div
-            key={i}
-            className="heart-bg absolute text-pink-200 dark:text-pink-900/20"
-            style={{
-              bottom: "-50px",
-            }}
-          >
-            ❤️
-          </div>
-        ))}
+      {/* Background Decor */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-rose-500/5 blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-500/5 blur-[100px] rounded-full" />
       </div>
 
-      {/* Hero Section */}
-      <Container maxWidth="lg" className="relative z-10 px-4 md:px-6 py-20 text-center">
-        <Box className="max-w-5xl mx-auto">
-          {/* Headline */}
+      <Container maxWidth="lg" className="relative z-10 px-4 py-32 text-center">
+        <Box className="hero-content max-w-4xl mx-auto flex flex-col items-center">
+          
+          {/* Badge mới: Ngắn gọn, không dùng từ livestream */}
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 mb-12 shadow-sm">
+            <VideocamIcon className="text-rose-500" sx={{ fontSize: 16 }} />
+            <Typography className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-600 dark:text-slate-300">
+              Vượt xa những cú quẹt • Chạm thực tế
+            </Typography>
+          </div>
+
+          {/* Header: Đã giảm size (từ 8xl xuống 6xl) và tinh chỉnh khoảng cách */}
           <Typography
             variant="h1"
-            component="h1"
-            // Thay đổi ở đây: Giảm size mobile (text-4xl), thêm md:text-6xl cho mượt hơn
-            className="hero-text text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white mb-6"
-            sx={{
-              fontWeight: 800,
-              lineHeight: 1.15,
-              // Quan trọng: CSS hiện đại giúp cân bằng chữ tự động
-              textWrap: "balance"
-            }}
+            className="text-4xl md:text-5xl lg:text-6xl font-[900] text-slate-900 dark:text-white mb-10 tracking-tight"
+            style={{ lineHeight: 1.2 }}
           >
-            Tìm Kiếm Mảnh Ghép
-            <span className="block mt-2 bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-              {/* Quan trọng: Dùng &nbsp; để chữ "Hoàn" và "Hảo" dính liền */}
-              StreamMatch Hoàn&nbsp;Hảo
+            Đập tan rào cản <br />
+            <span className="bg-gradient-to-r from-rose-500 to-indigo-600 bg-clip-text text-transparent">
+              Kết nối trực tiếp
             </span>
           </Typography>
 
-          {/* Subtitle */}
           <Typography
             variant="h5"
-            className="hero-text text-gray-600 dark:text-gray-300 mb-10 leading-relaxed max-w-2xl mx-auto text-base md:text-xl"
-            sx={{
-              fontWeight: 400,
-              // Giúp đoạn văn ngắn không bị ngắt dòng vô duyên (orphan words)
-              textWrap: "pretty"
-            }}
+            className="text-slate-500 dark:text-slate-400 mb-16 max-w-xl mx-auto text-base md:text-lg font-medium leading-relaxed"
           >
-            Kết nối với những người cùng tần số qua sở thích, những cuộc trò chuyện ý nghĩa và xây dựng những mối quan hệ chân thực.
+            Tạm biệt những tấm ảnh tĩnh vô hồn. <br />
+            Nơi bạn gặp gỡ và trò chuyện qua những khoảnh khắc chân thực nhất của đối phương.
           </Typography>
 
-          {/* Buttons Area */}
-
-          <Box className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full mt-5">
+          {/* Buttons Area: Giữ nguyên 2 nút của bạn nhưng tăng Margin Top (mt-10) */}
+          <Box className="flex flex-col sm:flex-row gap-5 justify-center items-center w-full mt-10">
             {user ? (
               <>
                 <Link href="/matches" passHref className="w-full sm:w-auto">
                   <Button
-                    variant="contained"
-                    size="large"
-                    fullWidth // Để full width trên mobile cho dễ bấm
-                    endIcon={<FavoriteIcon />}
-                    className="hero-btn"
+                    variant="contained" size="large" fullWidth endIcon={<FavoriteIcon />}
                     sx={{
                       background: "linear-gradient(45deg, #ec4899 30%, #9333ea 90%)",
                       borderRadius: "50px",
-                      padding: "14px 32px",
-                      fontSize: "1.1rem",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
                       fontWeight: "bold",
                       textTransform: "none",
                       boxShadow: "0 10px 20px -10px rgba(236, 72, 153, 0.5)",
                       "&:hover": {
                         background: "linear-gradient(45deg, #db2777 30%, #7e22ce 90%)",
-                        transform: "translateY(-2px)",
-                        boxShadow: "0 15px 25px -10px rgba(236, 72, 153, 0.6)",
+                        transform: "translateY(-3px)",
                       },
                       transition: "all 0.3s ease",
                     }}
@@ -168,15 +110,11 @@ export default function Home() {
 
                 <Link href="/profile" passHref className="w-full sm:w-auto">
                   <Button
-                    variant="outlined"
-                    size="large"
-                    fullWidth
-                    startIcon={<PersonIcon />}
-                    className="hero-btn"
+                    variant="outlined" size="large" fullWidth startIcon={<PersonIcon />}
                     sx={{
                       borderRadius: "50px",
-                      padding: "14px 32px",
-                      fontSize: "1.1rem",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
                       fontWeight: "bold",
                       textTransform: "none",
                       borderColor: "#ec4899",
@@ -186,7 +124,9 @@ export default function Home() {
                         borderColor: "#db2777",
                         backgroundColor: "rgba(236, 72, 153, 0.05)",
                         borderWidth: "2px",
+                        transform: "translateY(-3px)",
                       },
+                      transition: "all 0.3s ease",
                     }}
                   >
                     Xem Hồ Sơ
@@ -197,23 +137,18 @@ export default function Home() {
               <>
                 <Link href="/auth" passHref className="w-full sm:w-auto">
                   <Button
-                    variant="contained"
-                    size="large"
-                    fullWidth
-                    startIcon={<PlayArrowIcon />}
-                    className="hero-btn"
+                    variant="contained" size="large" fullWidth startIcon={<PlayArrowIcon />}
                     sx={{
                       background: "linear-gradient(45deg, #ec4899 30%, #9333ea 90%)",
                       borderRadius: "50px",
-                      padding: "14px 32px",
-                      fontSize: "1.1rem",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
                       fontWeight: "bold",
                       textTransform: "none",
                       boxShadow: "0 10px 20px -10px rgba(236, 72, 153, 0.5)",
                       "&:hover": {
                         background: "linear-gradient(45deg, #db2777 30%, #7e22ce 90%)",
-                        transform: "translateY(-2px)",
-                        boxShadow: "0 15px 25px -10px rgba(236, 72, 153, 0.6)",
+                        transform: "translateY(-3px)",
                       },
                       transition: "all 0.3s ease",
                     }}
@@ -224,15 +159,11 @@ export default function Home() {
 
                 <Link href="#tinh-nang" passHref className="w-full sm:w-auto">
                   <Button
-                    variant="outlined"
-                    size="large"
-                    fullWidth
-                    startIcon={<ExploreIcon />}
-                    className="hero-btn"
+                    variant="outlined" size="large" fullWidth startIcon={<ExploreIcon />}
                     sx={{
                       borderRadius: "50px",
-                      padding: "14px 32px",
-                      fontSize: "1.1rem",
+                      padding: "16px 40px",
+                      fontSize: "1rem",
                       fontWeight: "bold",
                       textTransform: "none",
                       borderColor: "#ec4899",
@@ -242,7 +173,9 @@ export default function Home() {
                         borderColor: "#db2777",
                         backgroundColor: "rgba(236, 72, 153, 0.05)",
                         borderWidth: "2px",
+                        transform: "translateY(-3px)",
                       },
+                      transition: "all 0.3s ease",
                     }}
                   >
                     Tìm Hiểu Thêm
@@ -253,38 +186,39 @@ export default function Home() {
           </Box>
         </Box>
       </Container>
-      <Container
-        id="tinh-nang"
-        maxWidth="lg"
-        className="py-20 relative z-10 scroll-mt-20" // scroll-mt giúp không bị header che mất
-      >
-        <Typography variant="h3" className="text-center font-bold mb-10 text-gray-800 dark:text-white">
-          Tại sao chọn StreamMatch?
-        </Typography>
 
-        <div className="grid md:grid-cols-3 gap-8 mt-5">
-          {/* Feature 1 */}
-          <div className="p-6 bg-white/50 dark:bg-slate-800/50 rounded-2xl backdrop-blur-sm border border-pink-100 dark:border-slate-700 hover:shadow-xl transition-all">
-            <div className="text-4xl mb-4">🎥</div>
-            <h3 className="text-xl font-bold mb-2 dark:text-white">Livestream Real-time</h3>
-            <p className="text-gray-600 dark:text-gray-300">Tương tác trực tiếp, thấy rõ cảm xúc đối phương thay vì chỉ nhắn tin.</p>
+      {/* Feature Section */}
+      <Box className="py-24">
+        <Container id="tinh-nang" maxWidth="lg">
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard 
+              emoji="✨" 
+              title="Hiện diện thực" 
+              desc="Không còn lo ngại về hồ sơ giả mạo. Mọi cuộc gặp gỡ đều diễn ra qua video trực tiếp." 
+            />
+            <FeatureCard 
+              emoji="🎯" 
+              title="Đúng tần số" 
+              desc="Hệ thống ghép đôi thông minh đưa bạn đến với những người có cùng phong cách sống." 
+            />
+            <FeatureCard 
+              emoji="🔒" 
+              title="An toàn tuyệt đối" 
+              desc="Công nghệ bảo mật giúp trải nghiệm kết nối của bạn luôn riêng tư và lành mạnh." 
+            />
           </div>
+        </Container>
+      </Box>
+    </div>
+  );
+}
 
-          {/* Feature 2 */}
-          <div className="p-6 bg-white/50 dark:bg-slate-800/50 rounded-2xl backdrop-blur-sm border border-pink-100 dark:border-slate-700 hover:shadow-xl transition-all">
-            <div className="text-4xl mb-4">🛡️</div>
-            <h3 className="text-xl font-bold mb-2 dark:text-white">Hồ sơ xác thực</h3>
-            <p className="text-gray-600 dark:text-gray-300">Nói không với nick ảo. Cộng đồng văn minh và an toàn.</p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="p-6 bg-white/50 dark:bg-slate-800/50 rounded-2xl backdrop-blur-sm border border-pink-100 dark:border-slate-700 hover:shadow-xl transition-all">
-            <div className="text-4xl mb-4">⚡</div>
-            <h3 className="text-xl font-bold mb-2 dark:text-white">Ghép đôi siêu tốc</h3>
-            <p className="text-gray-600 dark:text-gray-300">Thuật toán AI tìm kiếm người phù hợp với tần số của bạn.</p>
-          </div>
-        </div>
-      </Container>
+function FeatureCard({ emoji, title, desc }: { emoji: string; title: string; desc: string }) {
+  return (
+    <div className="p-8 bg-slate-50/50 dark:bg-slate-900/30 rounded-[24px] border border-slate-100 dark:border-white/5 hover:border-rose-500/20 transition-all duration-300">
+      <div className="text-3xl mb-5">{emoji}</div>
+      <h3 className="text-lg font-bold mb-3 text-slate-900 dark:text-white">{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }
