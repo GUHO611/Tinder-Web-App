@@ -4,6 +4,7 @@ import { getUserMatches } from "@/lib/actions/matches";
 import Link from "next/link";
 import { UserProfile } from "@/lib/actions/profile";
 import { useRouter } from "next/navigation";
+import { useMessage } from "@/contexts/message-context";
 
 interface ChatData {
   id: string;
@@ -11,25 +12,49 @@ interface ChatData {
   lastMessage?: string;
   lastMessageTime: string;
   unreadCount: number;
+  channelId: string;
+}
+
+// Helper function to generate channel ID (same logic as in stream.ts)
+function generateChannelId(userId1: string, userId2: string): string {
+  const sortedIds = [userId1, userId2].sort();
+  const combinedIds = sortedIds.join("_");
+  let hash = 0;
+  for (let i = 0; i < combinedIds.length; i++) {
+    const char = combinedIds.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return `match_${Math.abs(hash).toString(36)}`;
 }
 
 export default function ChatPage() {
   const [chats, setChats] = useState<ChatData[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { unreadByChannel, user, refreshUnreadCount } = useMessage();
 
   useEffect(() => {
     async function loadMatches() {
       try {
         const userMatches = await getUserMatches();
-        const chatData: ChatData[] = userMatches.map((match) => ({
-          id: match.id,
-          user: match,
-          lastMessage: "Bắt đầu cuộc trò chuyện của bạn!",
-          lastMessageTime: match.created_at,
-          unreadCount: 0,
-        }));
+        const chatData: ChatData[] = userMatches.map((match) => {
+          const channelId = generateChannelId(user?.id || '', match.id);
+          return {
+            id: match.id,
+            user: match,
+            lastMessage: "Bắt đầu cuộc trò chuyện của bạn!",
+            lastMessageTime: match.created_at,
+            unreadCount: 0,
+            channelId,
+          };
+        });
         setChats(chatData);
+
+        // Refresh unread counts when chat page loads
+        if (user) {
+          await refreshUnreadCount();
+        }
       } catch (error) {
         console.error(error);
       } finally {
@@ -37,8 +62,20 @@ export default function ChatPage() {
       }
     }
 
-    loadMatches();
-  }, []);
+    if (user) {
+      loadMatches();
+    }
+  }, [user, refreshUnreadCount]);
+
+  // Update unread counts when they change
+  useEffect(() => {
+    setChats(prevChats =>
+      prevChats.map(chat => ({
+        ...chat,
+        unreadCount: unreadByChannel[chat.channelId] || 0
+      }))
+    );
+  }, [unreadByChannel]);
 
   function formatTime(timestamp: string) {
     const date = new Date(timestamp);

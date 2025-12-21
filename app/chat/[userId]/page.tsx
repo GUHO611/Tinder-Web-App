@@ -3,8 +3,8 @@
 import { UserProfile } from "@/lib/actions/profile";
 import ChatHeader from "@/components/ChatHeader";
 import StreamChatInterface from "@/components/StreamChatInterface";
-import VideoCall from "@/components/VideoCall";
 import { useAuth } from "@/contexts/auth-context";
+import { useMessage } from "@/contexts/message-context";
 import { getUserMatches } from "@/lib/actions/matches";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +17,7 @@ export default function ChatConversationPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
+  const { markAsRead } = useMessage();
   const userId = params.userId as string;
 
   const chatInterfaceRef = useRef<{ handleVideoCall: () => void } | null>(null);
@@ -42,6 +43,23 @@ export default function ChatConversationPage() {
 
     loadUserData();
   }, [userId, router]);
+
+  // Mark messages as read when entering chat
+  useEffect(() => {
+    if (userId && user && !loading) {
+      // Generate the correct channel ID
+      const sortedIds = [user.id, userId].sort();
+      const combinedIds = sortedIds.join("_");
+      let hash = 0;
+      for (let i = 0; i < combinedIds.length; i++) {
+        const char = combinedIds.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash;
+      }
+      const channelId = `match_${Math.abs(hash).toString(36)}`;
+      markAsRead(channelId);
+    }
+  }, [userId, user, loading, markAsRead]);
 
   const handleVideoCallFromHeader = () => {
     chatInterfaceRef.current?.handleVideoCall();
@@ -111,13 +129,7 @@ export default function ChatConversationPage() {
           />
         </div>
 
-        {/* OVERLAY VIDEO CALL */}
-        {inCall && currentCallId && (
-          <VideoCall
-            callId={currentCallId}
-            onCallEnd={handleCallEnd}
-          />
-        )}
+
       </div>
     </div>
   );
