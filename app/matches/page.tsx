@@ -292,7 +292,7 @@ export default function MatchesPage() {
         gap: { xs: 4, lg: 4, xl: 6 },
       }}
     >
-      {/* --- CỘT CHÍNH: MATCH AREA (Luôn hiện đầu tiên) --- */}
+      {/* --- CỘT CHÍNH: MATCH AREA --- */}
       <Box
         sx={{
           flex: { lg: 1 },
