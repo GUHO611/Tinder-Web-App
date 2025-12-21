@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useMessage } from "@/contexts/message-context";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { gsap } from "gsap";
@@ -56,6 +57,7 @@ interface NavLinkProps {
   onClick?: () => void;
   mobile?: boolean;
   isScrolled?: boolean;
+  unreadCount?: number;
 }
 
 const NavLink = ({
@@ -67,6 +69,7 @@ const NavLink = ({
   onClick,
   mobile = false,
   isScrolled = false,
+  unreadCount = 0,
 }: NavLinkProps) => {
   const pathname = usePathname();
   const isActive = pathname === href;
@@ -82,11 +85,18 @@ const NavLink = ({
           : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
           }`}
       >
-        <div className={`p-2.5 rounded-xl transition-all duration-300 shadow-sm ${isActive
+        <div className={`p-2.5 rounded-xl transition-all duration-300 shadow-sm relative ${isActive
           ? `bg-gradient-to-br ${activeGradient} text-white scale-110 shadow-md`
           : `bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 ${hoverText} group-hover:scale-110 group-hover:shadow-md`
           }`}>
           {icon}
+
+          {/* Unread notification dot for mobile */}
+          {unreadCount > 0 && (
+            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold shadow-sm">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </div>
+          )}
         </div>
 
         <span className={`text-lg font-bold transition-colors duration-300 ${isActive
@@ -104,18 +114,25 @@ const NavLink = ({
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition-all duration-300 group ${isActive
+      className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition-all duration-300 group relative ${isActive
         ? "bg-white/90 dark:bg-gray-800/90 shadow-sm border border-gray-100 dark:border-gray-700"
         : "hover:bg-white/40 dark:hover:bg-gray-800/40"
         }`}
     >
-      <div className={`p-1.5 rounded-lg transition-all duration-300 ${isActive
+      <div className={`p-1.5 rounded-lg transition-all duration-300 relative ${isActive
         ? `bg-gradient-to-br ${activeGradient} text-white shadow-md scale-105`
         : `bg-white dark:bg-gray-800 text-gray-400 ${hoverText} group-hover:scale-110 shadow-sm`
         }`}>
         {React.isValidElement(icon)
           ? React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-5 h-5" })
           : icon}
+
+        {/* Unread notification dot */}
+        {unreadCount > 0 && (
+          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold shadow-sm">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </div>
+        )}
       </div>
 
       {/* --- PHẦN CHỈNH SỬA MÀU CHỮ --- */}
@@ -133,6 +150,7 @@ const NavLink = ({
 
 export default function Navbar() {
   const { signOut, user } = useAuth();
+  const { unreadCount } = useMessage();
   const router = useRouter();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -266,6 +284,7 @@ export default function Navbar() {
                   key={item.href}
                   {...item}
                   isScrolled={isScrolled}
+                  unreadCount={item.href === '/chat' ? unreadCount : 0}
                 />
               ))}
             </div>
@@ -330,6 +349,7 @@ export default function Navbar() {
                   {...item}
                   mobile
                   onClick={() => setIsMobileMenuOpen(false)}
+                  unreadCount={item.href === '/chat' ? unreadCount : 0}
                 />
               ))}
 

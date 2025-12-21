@@ -5,12 +5,14 @@ import { getUserMatches } from "@/lib/actions/matches";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { calculateAge } from "@/lib/helpers/calculate-age";
+import { useMessage } from "@/contexts/message-context";
 
 export default function MatchesListPage() {
   const [matches, setMatches] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
+  const { unreadByChannel, user } = useMessage();
 
   useEffect(() => {
     async function loadMatches() {
@@ -28,47 +30,60 @@ export default function MatchesListPage() {
     loadMatches();
   }, []);
 
-  // Helper: Format thời gian hoạt động gần nhất
-  function formatTime(timestamp: string) {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    const MINUTE = 60;
-    const HOUR = 60 * MINUTE;
-    const DAY = 24 * HOUR;
-    const WEEK = 7 * DAY;
-    const MONTH = 30 * DAY;
-    const YEAR = 365 * DAY;
-
-    if (diffInSeconds < 30) {
-      return "Vừa xong";
-    } else if (diffInSeconds < MINUTE) {
-      return `${diffInSeconds} giây trước`;
-    } else if (diffInSeconds < HOUR) {
-      const minutes = Math.floor(diffInSeconds / MINUTE);
-      return `${minutes} phút trước`;
-    } else if (diffInSeconds < DAY) {
-      const hours = Math.floor(diffInSeconds / HOUR);
-      return `${hours} giờ trước`;
-    } else if (diffInSeconds < WEEK) {
-      const days = Math.floor(diffInSeconds / DAY);
-      return `${days} ngày trước`;
-    } else if (diffInSeconds < MONTH) {
-      const weeks = Math.floor(diffInSeconds / WEEK);
-      return `${weeks} tuần trước`;
-    } else if (diffInSeconds < YEAR) {
-      const months = Math.floor(diffInSeconds / MONTH);
-      return `${months} tháng trước`;
-    } else {
-      const years = Math.floor(diffInSeconds / YEAR);
-      // Nếu chỉ muốn hiện "x năm trước"
-      return `${years} năm trước`;
-
-      // Hoặc nếu muốn hiện ngày cụ thể khi đã quá 1 năm, hãy dùng dòng dưới:
-      // return date.toLocaleDateString("vi-VN", { year: "numeric", month: "numeric", day: "numeric" });
-    }
+// Helper function to generate channel ID (same logic as in stream.ts)
+function generateChannelId(userId1: string, userId2: string): string {
+  const sortedIds = [userId1, userId2].sort();
+  const combinedIds = sortedIds.join("_");
+  let hash = 0;
+  for (let i = 0; i < combinedIds.length; i++) {
+    const char = combinedIds.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
   }
+  return `match_${Math.abs(hash).toString(36)}`;
+}
+
+// Helper: Format thời gian hoạt động gần nhất
+function formatTime(timestamp: string) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  const MINUTE = 60;
+  const HOUR = 60 * MINUTE;
+  const DAY = 24 * HOUR;
+  const WEEK = 7 * DAY;
+  const MONTH = 30 * DAY;
+  const YEAR = 365 * DAY;
+
+  if (diffInSeconds < 30) {
+    return "Vừa xong";
+  } else if (diffInSeconds < MINUTE) {
+    return `${diffInSeconds} giây trước`;
+  } else if (diffInSeconds < HOUR) {
+    const minutes = Math.floor(diffInSeconds / MINUTE);
+    return `${minutes} phút trước`;
+  } else if (diffInSeconds < DAY) {
+    const hours = Math.floor(diffInSeconds / HOUR);
+    return `${hours} giờ trước`;
+  } else if (diffInSeconds < WEEK) {
+    const days = Math.floor(diffInSeconds / DAY);
+    return `${days} ngày trước`;
+  } else if (diffInSeconds < MONTH) {
+    const weeks = Math.floor(diffInSeconds / WEEK);
+    return `${weeks} tuần trước`;
+  } else if (diffInSeconds < YEAR) {
+    const months = Math.floor(diffInSeconds / MONTH);
+    return `${months} tháng trước`;
+  } else {
+    const years = Math.floor(diffInSeconds / YEAR);
+    // Nếu chỉ muốn hiện "x năm trước"
+    return `${years} năm trước`;
+
+    // Hoặc nếu muốn hiện ngày cụ thể khi đã quá 1 năm, hãy dùng dòng dưới:
+    // return date.toLocaleDateString("vi-VN", { year: "numeric", month: "numeric", day: "numeric" });
+  }
+}
 
   if (loading) {
     return (
@@ -149,6 +164,13 @@ export default function MatchesListPage() {
                             <div className="relative w-4 h-4 bg-gray-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
                           </div>
                         )
+                      )}
+
+                      {/* Unread message notification */}
+                      {unreadByChannel[match.id] > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-sm">
+                          {unreadByChannel[match.id] > 99 ? '99+' : unreadByChannel[match.id]}
+                        </div>
                       )}
                     </div>
 

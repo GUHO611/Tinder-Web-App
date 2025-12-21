@@ -16,6 +16,7 @@ interface VideoCallCustomData extends Record<string, unknown> {
 
 export default function GlobalCallManager() {
   const [incomingCallId, setIncomingCallId] = useState<string>("");
+  const [callerId, setCallerId] = useState<string>("");
   const [callerName, setCallerName] = useState<string>("");
   const [callerImage, setCallerImage] = useState<string>(""); // <-- State lưu ảnh
   const [showIncomingCall, setShowIncomingCall] = useState(false);
@@ -54,11 +55,12 @@ export default function GlobalCallManager() {
 
             if (customData.caller_id && customData.caller_id !== currentUserId) {
               setIncomingCallId(customData.call_id || "");
-              
+              setCallerId(customData.caller_id);
+
               // CẬP NHẬT: Lấy ảnh từ customData trước, nếu không có thì fallback sang event.user
               setCallerName(customData.caller_name || event.user?.name || "Ai đó");
-              setCallerImage(customData.caller_image || event.user?.image || ""); 
-              
+              setCallerImage(customData.caller_image || event.user?.image || "");
+
               setShowIncomingCall(true);
             }
           }
@@ -83,12 +85,51 @@ export default function GlobalCallManager() {
     };
   }, []);
 
-  const handleAcceptCall = () => {
+  const handleAcceptCall = async () => {
+    // Send acceptance message to caller first
+    if (client && incomingCallId) {
+      try {
+        // Calculate channelId same way as server
+        const currentUserId = client.userID!;
+        const otherUserId = callerId;
+
+        const sortedIds = [currentUserId, otherUserId].sort();
+        const combinedIds = sortedIds.join("_");
+
+        let hash = 0;
+        for (let i = 0; i < combinedIds.length; i++) {
+          const char = combinedIds.charCodeAt(i);
+          hash = (hash << 5) - hash + char;
+          hash = hash & hash;
+        }
+
+        const channelId = `match_${Math.abs(hash).toString(36)}`;
+
+        // Get or create the channel
+        const channel = client.channel("messaging", channelId);
+
+        // Send acceptance message
+        const acceptanceData = {
+          text: `📹 Call accepted - joining now`,
+          call_id: incomingCallId,
+          acceptor_id: currentUserId,
+          call_accepted: true,
+        };
+
+        await channel.sendMessage(acceptanceData);
+        console.log("Sent call acceptance message from GlobalCallManager");
+      } catch (error) {
+        console.error("Error sending acceptance message:", error);
+      }
+    }
+
     setShowIncomingCall(false);
+    // Join the call immediately for receiver
     setActiveCallId(incomingCallId);
     setShowActiveCall(true);
-    
+
     setIncomingCallId("");
+    setCallerId("");
     setCallerName("");
     setCallerImage("");
   };
@@ -96,6 +137,7 @@ export default function GlobalCallManager() {
   const handleDeclineCall = () => {
     setShowIncomingCall(false);
     setIncomingCallId("");
+    setCallerId("");
     setCallerName("");
     setCallerImage("");
   };
@@ -111,8 +153,8 @@ export default function GlobalCallManager() {
     <>
       {/* --- MODAL THÔNG BÁO CUỘC GỌI ĐẾN --- */}
       {showIncomingCall && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999]">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm mx-4 shadow-2xl animate-pulse-fade">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm mx-4 shadow-2xl animate-pulse-fade border border-gray-200 dark:border-gray-700">
             <div className="text-center">
               <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-4 border-pink-500 relative">
                  {/* Hiển thị ảnh Caller */}
@@ -157,6 +199,7 @@ export default function GlobalCallManager() {
             callId={activeCallId}
             onCallEnd={handleCallEnd}
             isIncoming={true}
+            otherUserId={callerName} // Pass caller name for reference
           />
         </div>
       )}
