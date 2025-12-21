@@ -1,82 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
-import { getUserMatches } from "@/lib/actions/matches";
+
 import Link from "next/link";
-import { UserProfile } from "@/lib/actions/profile";
 import { useRouter } from "next/navigation";
 import { useMessage } from "@/contexts/message-context";
 
-interface ChatData {
-  id: string;
-  user: UserProfile;
-  lastMessage?: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  channelId: string;
-}
-
-// Helper function to generate channel ID (same logic as in stream.ts)
-function generateChannelId(userId1: string, userId2: string): string {
-  const sortedIds = [userId1, userId2].sort();
-  const combinedIds = sortedIds.join("_");
-  let hash = 0;
-  for (let i = 0; i < combinedIds.length; i++) {
-    const char = combinedIds.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return `match_${Math.abs(hash).toString(36)}`;
-}
-
 export default function ChatPage() {
-  const [chats, setChats] = useState<ChatData[]>([]);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { unreadByChannel, user, refreshUnreadCount } = useMessage();
 
-  useEffect(() => {
-    async function loadMatches() {
-      try {
-        const userMatches = await getUserMatches();
-        const chatData: ChatData[] = userMatches.map((match) => {
-          const channelId = generateChannelId(user?.id || '', match.id);
-          return {
-            id: match.id,
-            user: match,
-            lastMessage: "Bắt đầu cuộc trò chuyện của bạn!",
-            lastMessageTime: match.created_at,
-            unreadCount: 0,
-            channelId,
-          };
-        });
-        setChats(chatData);
+  // Lấy toàn bộ dữ liệu từ Context
+  const { chatList, isLoadingChats, user } = useMessage();
 
-        // Refresh unread counts when chat page loads
-        if (user) {
-          await refreshUnreadCount();
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (user) {
-      loadMatches();
-    }
-  }, [user, refreshUnreadCount]);
-
-  // Update unread counts when they change
-  useEffect(() => {
-    setChats(prevChats =>
-      prevChats.map(chat => ({
-        ...chat,
-        unreadCount: unreadByChannel[chat.channelId] || 0
-      }))
-    );
-  }, [unreadByChannel]);
-
+  // Hàm helper format time (chỉ để hiển thị)
   function formatTime(timestamp: string) {
     const date = new Date(timestamp);
     const now = new Date();
@@ -89,46 +23,14 @@ export default function ChatPage() {
     const MONTH = 30 * DAY;
     const YEAR = 365 * DAY;
 
-    if (diffInSeconds < 30) {
-      return "Vừa xong";
-    } else if (diffInSeconds < MINUTE) {
-      return `${diffInSeconds} giây trước`;
-    } else if (diffInSeconds < HOUR) {
-      const minutes = Math.floor(diffInSeconds / MINUTE);
-      return `${minutes} phút trước`;
-    } else if (diffInSeconds < DAY) {
-      const hours = Math.floor(diffInSeconds / HOUR);
-      return `${hours} giờ trước`;
-    } else if (diffInSeconds < WEEK) {
-      const days = Math.floor(diffInSeconds / DAY);
-      return `${days} ngày trước`;
-    } else if (diffInSeconds < MONTH) {
-      const weeks = Math.floor(diffInSeconds / WEEK);
-      return `${weeks} tuần trước`;
-    } else if (diffInSeconds < YEAR) {
-      const months = Math.floor(diffInSeconds / MONTH);
-      return `${months} tháng trước`;
-    } else {
-      const years = Math.floor(diffInSeconds / YEAR);
-      // Nếu chỉ muốn hiện "x năm trước"
-      return `${years} năm trước`;
-
-      // Hoặc nếu muốn hiện ngày cụ thể khi đã quá 1 năm, hãy dùng dòng dưới:
-      // return date.toLocaleDateString("vi-VN", { year: "numeric", month: "numeric", day: "numeric" });
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="h-full min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">
-            Đang tìm kiếm những người phù hợp...
-          </p>
-        </div>
-      </div>
-    );
+    if (diffInSeconds < 30) return "Vừa xong";
+    if (diffInSeconds < MINUTE) return `${diffInSeconds} giây trước`;
+    if (diffInSeconds < HOUR) return `${Math.floor(diffInSeconds / MINUTE)} phút trước`;
+    if (diffInSeconds < DAY) return `${Math.floor(diffInSeconds / HOUR)} giờ trước`;
+    if (diffInSeconds < WEEK) return `${Math.floor(diffInSeconds / DAY)} ngày trước`;
+    if (diffInSeconds < MONTH) return `${Math.floor(diffInSeconds / WEEK)} tuần trước`;
+    if (diffInSeconds < YEAR) return `${Math.floor(diffInSeconds / MONTH)} tháng trước`;
+    return `${Math.floor(diffInSeconds / YEAR)} năm trước`;
   }
 
   const defaultAvatarUrl = "/default-avatar.png";
@@ -139,6 +41,21 @@ export default function ChatPage() {
     router.push(`/profile/${userId}`);
   };
 
+  // 1. Loading State từ Context
+  if (isLoadingChats) {
+    return (
+      <div className="h-full min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">
+            Đang tải cuộc trò chuyện...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Render UI
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-red-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
@@ -147,11 +64,11 @@ export default function ChatPage() {
             Tin nhắn
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {chats.length} cuộc trò chuyện{chats.length !== 1 ? "" : ""}
+            {chatList.length} cuộc trò chuyện
           </p>
         </header>
 
-        {chats.length === 0 ? (
+        {chatList.length === 0 ? (
           <div className="text-center max-w-md mx-auto p-8">
             <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <span className="text-4xl">💬</span>
@@ -172,7 +89,8 @@ export default function ChatPage() {
         ) : (
           <div className="max-w-2xl mx-auto">
             <div className="grid space-y-4">
-              {chats.map((chat, key) => (
+              {/* Sử dụng dữ liệu trực tiếp từ chatList trong Context */}
+              {chatList.map((chat, key) => (
                 <Link
                   key={key}
                   href={`/chat/${chat.id}`}
@@ -194,17 +112,12 @@ export default function ChatPage() {
 
                         {chat.user.is_online ? (
                           <div className="absolute bottom-1 right-1 flex items-center justify-center z-20">
-                            {/* Vòng nhấp nháy tỏa ra */}
                             <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
-
-                            {/* Chấm tròn chính */}
                             <div className="relative w-4 h-4 bg-green-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
                           </div>
                         ) : (
-                          // Tùy chọn: Hiển thị thời gian hoạt động gần nhất nếu offline
                           chat.user.last_active && (
                             <div className="absolute bottom-1 right-1 flex items-center justify-center z-20">
-                              {/* Chấm tròn chính */}
                               <div className="relative w-4 h-4 bg-gray-500 rounded-full border-[2.5px] border-white dark:border-gray-800 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
                             </div>
                           )
@@ -228,19 +141,17 @@ export default function ChatPage() {
                             {chat.user.full_name}
                           </h3>
                         </div>
-                        {!chat.user.is_online && chat.user.last_active && (
-                          <span className="text-[14px] text-gray-400 font-medium">
-                            Online cách đây: {formatTime(chat.user.last_active)}
-                          </span>
-                        )}
+                        <span className="text-[12px] text-gray-400 font-medium">
+                          {formatTime(chat.lastMessageTime)}
+                        </span>
                       </div>
 
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className={`text-sm truncate ${chat.unreadCount > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>
+                        {chat.isLastMessageMine && <span className="font-medium text-gray-500 mr-1">Bạn:</span>}
                         {chat.lastMessage}
                       </p>
                     </div>
 
-                    {/* Chat Icon */}
                     <div className="flex-shrink-0 text-gray-300 group-hover:text-pink-500 transition-colors">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
