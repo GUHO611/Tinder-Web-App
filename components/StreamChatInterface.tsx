@@ -62,9 +62,14 @@ export default function StreamChatInterface({
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isCallInitiator, setIsCallInitiator] = useState(false);
 
-  const [incomingCallId, setIncomingCallId] = useState<string>("");
-  const [callerName, setCallerName] = useState<string>("");
-  const [showIncomingCall, setIncomingCall] = useState(false);
+
+
+  // Waiting room states
+  const [showWaitingRoom, setShowWaitingRoom] = useState(false);
+  const [waitingRoomCallId, setWaitingRoomCallId] = useState<string>("");
+  const [waitingForParticipant, setWaitingForParticipant] = useState<string>("");
+
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -98,12 +103,45 @@ export default function StreamChatInterface({
     }
   }, [handleScroll]);
 
+  // Separate effect to handle call acceptance messages for callers
+  useEffect(() => {
+    if (!channel || !isCallInitiator || !waitingRoomCallId) return;
+
+    const handleAcceptanceMessage = (event: Event) => {
+      if (event.message?.text?.includes(`📹 Call accepted - joining now`)) {
+        console.log("Call acceptance received by caller:", event.message);
+
+        const customData = event.message as unknown as VideoCallCustomData;
+
+        // If this acceptance is for our call, join immediately
+        if (customData.call_id === waitingRoomCallId && customData.call_accepted) {
+          console.log("Caller joining call after acceptance:", customData.call_id);
+
+          // Start the video call for caller - will show waiting UI until receiver joins
+          setVideoCallId(waitingRoomCallId);
+          setShowVideoCall(true);
+
+          // Hide waiting room
+          setShowWaitingRoom(false);
+          setWaitingRoomCallId("");
+          setWaitingForParticipant("");
+
+          // Notify parent component
+          onCallStart?.(waitingRoomCallId);
+        }
+      }
+    };
+
+    channel.on("message.new", handleAcceptanceMessage);
+
+    return () => {
+      channel.off("message.new", handleAcceptanceMessage);
+    };
+  }, [channel, isCallInitiator, waitingRoomCallId, onCallStart]);
+
   useEffect(() => {
     setShowVideoCall(false);
     setVideoCallId("");
-    setIncomingCall(false);
-    setIncomingCallId("");
-    setCallerName("");
     setIsCallInitiator(false);
 
     async function initializeChat() {
@@ -147,23 +185,10 @@ export default function StreamChatInterface({
         setMessages(convertedMessages);
 
         chatChannel.on("message.new", (event: Event) => {
+          console.log("Received message:", event.message);
           if (event.message) {
-            // Check tin nhắn mời gọi video
-            if (event.message.text?.includes(`📹 Video call invitation`)) {
-
-              // --- THAY THẾ ANY ---
-              // Ép kiểu an toàn sang interface VideoCallCustomData
-              const customData = event.message as unknown as VideoCallCustomData;
-
-              // Chỉ hiện thông báo cho người nhận (ID khác người gửi)
-              if (customData.caller_id && customData.caller_id !== userId) {
-                setIncomingCallId(customData.call_id || "");
-                setCallerName(customData.caller_name || "Someone");
-                setIncomingCall(true);
-              }
-              return;
-            }
-
+            // Video call handling is now done by GlobalCallManager
+            // Only handle regular messages here
             if (event.message.user?.id !== userId) {
               const newMsg: Message = {
                 id: event.message.id,
@@ -219,27 +244,42 @@ export default function StreamChatInterface({
 
   async function handleVideoCall() {
     try {
+      console.log("Starting video call with user:", otherUser.id);
       const { callId } = await createVideoCall(otherUser.id);
-      setVideoCallId(callId!);
-      setShowVideoCall(true);
+      console.log("Created call ID:", callId);
+
+      if (!callId) {
+        console.error("No call ID returned");
+        return;
+      }
+
+      // Show waiting room for caller and start video call immediately
+      setWaitingRoomCallId(callId);
+      setWaitingForParticipant(otherUser.full_name || "Người kia");
+      setShowWaitingRoom(true);
       setIsCallInitiator(true);
 
+      // Start video call immediately for caller (they will see waiting UI)
+      setVideoCallId(callId);
+      setShowVideoCall(true);
+
       if (channel) {
-        // --- THAY THẾ ANY ---
-        // Tạo object đúng kiểu VideoCallCustomData
         const messageData: VideoCallCustomData = {
           text: `📹 Video call invitation`,
           call_id: callId,
           caller_id: currentUserId,
           caller_name: otherUser.full_name || "Someone",
+          waiting_room: true, // Indicate this is a waiting room invitation
         };
 
-        // Stream Chat sendMessage chấp nhận Record<string, unknown> cho custom fields
-        // Chúng ta ép kiểu về Record<string, unknown> để TypeScript không báo lỗi thiếu các trường mặc định của Message
-        await channel.sendMessage(messageData as unknown as Record<string, unknown>);
+        console.log("Sending call invitation message:", messageData);
+        const sentMessage = await channel.sendMessage(messageData as unknown as Record<string, unknown>);
+        console.log("Call invitation sent:", sentMessage);
+      } else {
+        console.error("No channel available to send call invitation");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error in handleVideoCall:", error);
     }
   }
 
@@ -283,28 +323,6 @@ export default function StreamChatInterface({
     setShowVideoCall(false);
     setVideoCallId("");
     setIsCallInitiator(false);
-
-    setIncomingCall(false);
-    setIncomingCallId("");
-    setCallerName("");
-  }
-
-  function handleDeclineCall() {
-    setIncomingCall(false);
-    setIncomingCallId("");
-    setCallerName("");
-  }
-
-  function handleAcceptCall() {
-    setVideoCallId(incomingCallId);
-    setShowVideoCall(true);
-
-    setIncomingCall(false);
-    setIncomingCallId("");
-    setCallerName("");
-    setIsCallInitiator(false);
-
-    onCallStart?.(incomingCallId);
   }
 
   function formatTime(date: Date) {
@@ -445,47 +463,49 @@ export default function StreamChatInterface({
         </form>
       </div>
 
-      {showIncomingCall && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm mx-4 shadow-2xl">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-4 border-pink-500">
-                <img
-                  src={otherUser.avatar_url || "/default-avartar.png"}
-                  alt={otherUser.full_name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Cuộc gọi Video đến
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {callerName} đang gọi cho bạn
-              </p>
-              <div className="flex space-x-4">
-                <button
-                  onClick={handleDeclineCall}
-                  className="flex-1 bg-red-500 text-white py-3 px-6 rounded-full font-semibold hover:bg-red-600 transition-colors duration-200"
-                >
-                  Từ chối
-                </button>
-                <button
-                  onClick={handleAcceptCall}
-                  className="flex-1 bg-green-500 text-white py-3 px-6 rounded-full font-semibold hover:bg-green-600 transition-colors duration-200"
-                >
-                  Chấp nhận
-                </button>
-              </div>
+
+
+      {/* Waiting Room */}
+      {showWaitingRoom && waitingRoomCallId && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm mx-4 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
             </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Đang kết nối...
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Đang chờ {waitingForParticipant} tham gia
+            </p>
+            <div className="flex space-x-2 justify-center mb-4">
+              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+            </div>
+            <button
+              onClick={() => {
+                setShowWaitingRoom(false);
+                setWaitingRoomCallId("");
+                setWaitingForParticipant("");
+              }}
+              className="bg-gray-500 text-white py-2 px-6 rounded-full font-semibold hover:bg-gray-600 transition-colors duration-200"
+            >
+              Hủy
+            </button>
           </div>
         </div>
       )}
 
+      {/* Video Call - only for callers waiting or in active calls */}
       {showVideoCall && videoCallId && (
         <VideoCall
           onCallEnd={handleCallEnd}
           callId={videoCallId}
           isIncoming={!isCallInitiator}
+          showWaitingForParticipant={isCallInitiator} // Show waiting UI only for callers
         />
       )}
     </div>

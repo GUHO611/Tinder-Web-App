@@ -33,7 +33,7 @@ html {
 /* Quy tắc này chọn phần tử con trực tiếp đầu tiên nằm trong thẻ main.
    Tức là cái thẻ div bao ngoài cùng của Page (Home, Matches...).
 */
-main > :first-child {
-  padding-top: 6rem;
+main> :first-child {
+  padding-top: 1rem;
   /* 6rem ~ 96px (tương đương pt-24) */
 }

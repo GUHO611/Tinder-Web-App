@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
+import { MessageProvider } from "@/contexts/message-context";
 import Navbar from "@/components/Navbar";
+import GlobalCallManager from "@/components/GlobalCallManager";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["vietnamese"],
@@ -24,14 +26,17 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${beVietnamPro.className} antialiased`}>
         <AuthProvider>
-          {/* XÓA pt-20 Ở ĐÂY. Để layout tràn màn hình */}
-          <div className="flex flex-col min-h-screen relative">
-            <Navbar />
-            {/* Thẻ main này KHÔNG được có pt-20 hay pt-24 */}
-            <main className="flex-1">
-              {children}
-            </main>
-          </div>
+          <MessageProvider>
+            {/* XÓA pt-20 Ở ĐÂY. Để layout tràn màn hình */}
+            <div className="flex flex-col min-h-screen relative">
+              <Navbar />
+              {/* Thẻ main này KHÔNG được có pt-20 hay pt-24 */}
+              <main className="flex-1">
+                {children}
+              </main>
+              <GlobalCallManager />
+            </div>
+          </MessageProvider>
         </AuthProvider>
       </body>
     </html>
