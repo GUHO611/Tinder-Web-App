@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "create-fake-profiles": "tsx scripts/create-fake-profiles.ts"
+    "create-fake-profiles": "ts-node scripts/create-fake-profiles.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -37,6 +37,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.4",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }

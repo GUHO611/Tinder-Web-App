@@ -26,8 +26,8 @@ const StyledListItem = styled(ListItem)(({ theme }) => ({
 }));
 interface LeaderboardUser {
     id: string;          // Hoặc number, tùy thuộc vào DB của bạn
-    full_name: string;
-    avatar_url: string;  // Hoặc string | null nếu có thể null
+    full_name: string | null;
+    avatar_url: string | null;  // Hoặc string | null nếu có thể null
     like_count: number;
 }
 export default function Leaderboard() {
@@ -36,7 +36,7 @@ export default function Leaderboard() {
 
     useEffect(() => {
         async function load() {
-            const data = await getLeaderboard();
+            const data: LeaderboardUser[] = await getLeaderboard();
             setTopUsers(data);
             setLoading(false);
         }
@@ -80,7 +80,14 @@ export default function Leaderboard() {
             `}</style>
 
             {/* PHẦN TIÊU ĐỀ MỚI */}
-            <Box sx={{ textAlign: 'center', py: 3 }}>
+            <Box sx={{
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+                pb: 2, // Padding bottom để tách nội dung
+                bgcolor: "inherit",
+                textAlign: 'center', py: 3
+            }}>
                 <Typography
                     variant="h5"
                     sx={{
@@ -143,7 +150,7 @@ export default function Leaderboard() {
 
                                 <ListItemAvatar sx={{ minWidth: 65 }}>
                                     <Avatar
-                                        src={user.avatar_url}
+                                        src={user.avatar_url || "/default-avatar.png"}
                                         sx={{
                                             width: 50, height: 50,
                                             border: isTop3 ? `2px solid ${rankColor}` : '1px solid #f0f0f0'

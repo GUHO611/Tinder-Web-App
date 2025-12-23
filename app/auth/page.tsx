@@ -1,38 +1,234 @@
 "use client";
+
+// --- Imports Logic & Context ---
 import { useAuth } from "@/contexts/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentUserProfile, markUserAsVerified } from "@/lib/actions/profile";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
+
+// --- Imports UI Libraries ---
 import gsap from "gsap";
+import {
+    Box,
+    Button,
+    Checkbox,
+    Container,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputAdornment,
+    Paper,
+    TextField,
+    Typography,
+    Link as MuiLink,
+    Alert,
+    CircularProgress,
+    Fade,
+    useMediaQuery,
+    useTheme
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
 
-// --- Icons ---
-const MailIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-);
-const LockIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-);
-const KeyIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-    </svg>
+// --- Custom Icons ---
+// Chuyển đổi SVG icons cũ sang component React nhận props style
+const SvgIconWrapper = ({ children, color = "currentColor" }: { children: React.ReactNode, color?: string }) => (
+    <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+        {children}
+    </Box>
 );
 
+const Icons = {
+    Mail: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+    ),
+    Lock: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+    ),
+    Key: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+        </svg>
+    ),
+    Heart: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#FFC5D3" stroke="none">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+    )
+};
+
+// --- STYLED COMPONENTS ---
+
+// 1. Page Background
+const PageWrapper = styled(Box)({
+    height: '100vh',        // Bắt buộc bằng màn hình
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #FF99AC 100%)',
+    position: 'relative',
+    overflow: 'hidden',     // Cắt bỏ mọi thứ tràn ra ngoài -> Không bao giờ có scroll tổng
+});
+
+// 2. Glassmorphism Card Container
+const AuthCard = styled(Paper)(({ theme }) => ({
+    display: 'flex',
+    borderRadius: '32px',
+    overflow: 'hidden',
+    boxShadow: '0 20px 80px rgba(233, 64, 134, 0.25)',
+    maxWidth: '900px',      // Giảm độ rộng tổng thể một chút cho gọn
+    width: '90%',
+    maxHeight: '85vh',      // Giới hạn chiều cao card chỉ chiếm 85% màn hình
+    overflowY: 'auto',      // Nếu nội dung dài quá thì scroll TRONG CARD, không scroll trang
+    position: 'relative',
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(40px)',
+    border: '1px solid rgba(255, 255, 255, 0.6)',
+
+    // Ẩn thanh cuộn mặc định cho đẹp
+    '&::-webkit-scrollbar': {
+        width: '0px',
+        background: 'transparent',
+    },
+
+    [theme.breakpoints.down('md')]: {
+        flexDirection: 'column',
+        width: '95%',
+        maxHeight: '95vh',
+    },
+}));
+
+// 3. Left Panel (Illustration)
+const LeftPanel = styled(Box)({
+    flex: 0.8,              // Giảm tỷ lệ chiếm chỗ (trước là 1, giờ 0.8 để nhường chỗ cho form)
+    background: 'linear-gradient(135deg, rgba(233, 64, 134, 0.8) 0%, rgba(255, 126, 179, 0.8) 100%)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '32px',        // Giảm padding (trước là 40px)
+    color: 'white',
+    position: 'relative',
+    overflow: 'hidden',
+});
+
+// 4. Right Panel (Form)
+const RightPanel = styled(Box)(({ theme }) => ({
+    flex: 1,
+    padding: '48px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)', // Semi-transparent white
+    [theme.breakpoints.down('sm')]: {
+        padding: '32px 24px',
+    },
+}));
+
+// 5. Romantic Styled Input
+const RomanticTextField = styled(TextField)({
+    '& .MuiOutlinedInput-root': {
+        borderRadius: '16px',
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        transition: 'all 0.3s ease',
+        '& fieldset': {
+            borderColor: 'rgba(233, 64, 134, 0.2)',
+        },
+        '&:hover fieldset': {
+            borderColor: '#E94086',
+        },
+        '&.Mui-focused': {
+            backgroundColor: '#ffffff',
+            boxShadow: '0 4px 20px rgba(233, 64, 134, 0.1)',
+            '& fieldset': {
+                borderColor: '#E94086',
+            },
+        },
+    },
+});
+
+// 6. Action Button with Glow
+const GlowButton = styled(Button)({
+    borderRadius: '16px',
+    padding: '12px',
+    fontSize: '1rem',
+    fontWeight: 700,
+    textTransform: 'none',
+    background: 'linear-gradient(45deg, #E94086 30%, #FF7EB3 90%)',
+    boxShadow: '0 3px 15px rgba(233, 64, 134, 0.3)',
+    color: 'white',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        background: 'linear-gradient(45deg, #D63376 30%, #FF5C9D 90%)',
+        boxShadow: '0 8px 25px rgba(233, 64, 134, 0.5)',
+        transform: 'translateY(-2px)',
+    },
+    '&:disabled': {
+        background: '#e0e0e0',
+        boxShadow: 'none',
+    }
+});
+
+// --- ANIMATION COMPONENTS ---
+const FloatingHeartsBackground = () => {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useLayoutEffect(() => {
+        const ctx = gsap.context(() => {
+            const hearts = gsap.utils.toArray('.heart-item') as HTMLElement[];
+            hearts.forEach((heart) => {
+                const duration = gsap.utils.random(6, 15);
+                const delay = gsap.utils.random(0, 5);
+                const xStart = gsap.utils.random(0, 100);
+                const scale = gsap.utils.random(0.4, 1);
+
+                gsap.set(heart, {
+                    x: `${xStart}vw`,
+                    y: '110vh',
+                    scale: scale,
+                    opacity: gsap.utils.random(0.3, 0.6),
+                });
+
+                gsap.to(heart, {
+                    y: '-20vh',
+                    x: `+=${gsap.utils.random(-20, 20)}`,
+                    rotation: gsap.utils.random(-180, 180),
+                    duration: duration,
+                    repeat: -1,
+                    delay: delay,
+                    ease: 'none',
+                });
+            });
+        }, containerRef);
+        return () => ctx.revert();
+    }, []);
+
+    return (
+        <Box ref={containerRef} sx={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+            {[...Array(15)].map((_, i) => (
+                <Box key={i} className="heart-item" sx={{ position: 'absolute' }}>
+                    <Icons.Heart />
+                </Box>
+            ))}
+        </Box>
+    );
+};
+
+// --- MAIN COMPONENT ---
 function AuthPage() {
-    // Quản lý 3 trạng thái view thay vì boolean isSignUp
+    // === LOGIC GIỮ NGUYÊN ===
     const [view, setView] = useState<'login' | 'signup' | 'verify_signup'>('login');
-
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
     const [otp, setOtp] = useState<string>("");
     const [rememberMe, setRememberMe] = useState<boolean>(true);
-
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
     const [message, setMessage] = useState<string>("");
@@ -40,63 +236,80 @@ function AuthPage() {
     const supabase = createClient();
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const formRef = useRef<HTMLDivElement>(null);
-    const imageRef = useRef<HTMLDivElement>(null);
 
-    // Redirect nếu đã đăng nhập thành công
+    // Refs for animation
+    const cardRef = useRef<HTMLDivElement>(null);
+    const illustrationRef = useRef<HTMLImageElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
     useEffect(() => {
-        if (user && !authLoading) {
+        if (user && !authLoading && !loading) {
             router.push("/");
-            // router.refresh();
         }
-    }, [user, authLoading, router]);
+    }, [user, authLoading, router, loading]);
 
-    // Reset input khi chuyển view (QUAN TRỌNG: KHÔNG ĐƯỢC RESET EMAIL)
     useEffect(() => {
         setError("");
         setMessage("");
         setPassword("");
         setConfirmPassword("");
         setOtp("");
-        // Lưu ý: Không reset Email để tiện cho UX khi người dùng chuyển qua lại
     }, [view]);
 
-    // Animation chuyển view (GSAP)
-    useEffect(() => {
+    // === ANIMATIONS (GSAP) ===
+    useLayoutEffect(() => {
         const ctx = gsap.context(() => {
-            // Input animation
-            gsap.fromTo(".auth-input",
-                { y: 20, opacity: 0 },
-                { y: 0, opacity: 1, stagger: 0.1, duration: 0.5, ease: "power2.out", clearProps: "all" }
-            );
-        }, formRef);
-        return () => ctx.revert();
-    }, [view]);
+            // 1. Page Load: Card Slide Up + Fade
+            gsap.from(cardRef.current, {
+                y: 100,
+                opacity: 0,
+                duration: 1.2,
+                ease: "power3.out",
+                delay: 0.2
+            });
 
-    // Animation ảnh bên trái
-    useEffect(() => {
-        const ctx = gsap.context(() => {
-            gsap.from(".auth-image", { x: -50, opacity: 0, duration: 1, ease: "power3.out" });
-        }, imageRef);
+            // 2. Illustration: Scale + Blur Out effect on entrance
+            if (illustrationRef.current) {
+                gsap.from(illustrationRef.current, {
+                    scale: 1.1,
+                    filter: "blur(10px)",
+                    duration: 1.5,
+                    ease: "power2.out"
+                });
+            }
+        });
         return () => ctx.revert();
     }, []);
 
-    // Hàm chuyển view thủ công
+    // 3. View Switch Animation
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            if (formRef.current) {
+                // Animate form elements staggering in
+                gsap.fromTo(formRef.current.children,
+                    { y: 20, opacity: 0 },
+                    { y: 0, opacity: 1, stagger: 0.05, duration: 0.4, ease: "back.out(1.7)" }
+                );
+            }
+        });
+        return () => ctx.revert();
+    }, [view]);
+
+    // === HANDLERS (Giữ nguyên) ===
     const switchView = (newView: 'login' | 'signup') => {
         setView(newView);
     };
 
-    // Gửi lại mã OTP
     const handleResendOtp = async () => {
         if (!email) return setError("Vui lòng nhập email trước");
         setLoading(true);
         setMessage("");
         setError("");
         try {
-            const { error } = await supabase.auth.resend({
-                type: 'signup',
-                email: email,
-            });
+            const { error } = await supabase.auth.resend({ type: 'signup', email: email });
             if (error) throw error;
             setMessage("Đã gửi lại mã xác minh mới. Vui lòng kiểm tra email.");
         } catch (err: unknown) {
@@ -108,7 +321,6 @@ function AuthPage() {
         }
     };
 
-    // Xử lý Auth Chính
     async function handleAuth(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
@@ -116,302 +328,310 @@ function AuthPage() {
         setMessage("");
 
         try {
-            // --- 1. ĐĂNG KÝ ---
             if (view === 'signup') {
                 if (password !== confirmPassword) throw new Error("Mật khẩu xác nhận không khớp");
-
-                const { data, error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    // Supabase sẽ tự gửi OTP nếu bạn đã config Email Template dùng {{ .Token }}
-                });
-
+                const { data, error } = await supabase.auth.signUp({ email, password });
                 if (error) throw error;
-
-                // TRƯỜNG HỢP: Cần xác minh Email (User tạo nhưng chưa có session)
                 if (data.user && !data.session) {
                     setMessage(`Mã xác minh đã được gửi đến ${email}`);
-                    setView('verify_signup'); // Chuyển sang màn hình nhập OTP
-                }
-                // TRƯỜNG HỢP: Supabase tự đăng nhập luôn (Nếu config tắt Confirm Email)
-                else if (data.session) {
+                    setView('verify_signup');
+                    setLoading(false);
+                } else if (data.session) {
                     router.push("/");
                 }
-            }
-
-            // --- 2. XÁC MINH OTP ---
-            else if (view === 'verify_signup') {
+            } else if (view === 'verify_signup') {
                 if (!email) throw new Error("Email bị trống. Vui lòng nhập lại email.");
-
-                const { data, error } = await supabase.auth.verifyOtp({
-                    email,
-                    token: otp,
-                    type: 'signup'
-                });
-
+                const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
                 if (error) throw error;
-                await markUserAsVerified(); // 1. Đánh dấu đã xác minh
-
-                // 2. Kiểm tra Profile để điều hướng (Yêu cầu 1)
+                await markUserAsVerified();
                 const profile = await getCurrentUserProfile();
+                router.refresh();
                 if (profile && !profile.is_profile_completed) {
-                    setMessage("Xác minh thành công! Vui lòng hoàn thiện hồ sơ.");
-                    router.push("/profile/edit"); // Chuyển sang trang Edit
+                    router.push("/profile/edit");
                 } else {
-                    setMessage("Xác minh thành công! Đang vào ứng dụng...");
                     router.push("/");
                 }
-                router.refresh();
-                // // Xác minh thành công -> Session được lưu -> useEffect ở trên sẽ tự redirect
-                // setMessage("Xác minh thành công! Đang vào ứng dụng...");
-                // router.push("/profile/edit");
-            }
-
-            // --- 3. ĐĂNG NHẬP ---
-            else if (view === 'login') {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-
+            } else if (view === 'login') {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) {
-                    // FIX LỖI: Nếu đăng nhập mà tài khoản chưa xác thực
                     if (error.message.includes("Email not confirmed")) {
                         setMessage("Tài khoản chưa được xác thực. Vui lòng nhập mã OTP đã gửi về email.");
                         setView('verify_signup');
-                        // Tự động gửi lại mã mới cho tiện người dùng
                         await supabase.auth.resend({ type: 'signup', email });
+                        setLoading(false);
                         return;
                     }
-                    // Kiểm tra Profile sau khi login
-                    const profile = await getCurrentUserProfile();
-                    if (profile && !profile.is_profile_completed) {
-                        router.push("/profile/edit");
-                    } else {
-                        router.push("/");
-                    }
-                    router.refresh();
+                    throw error;
+                }
+                router.refresh();
+                const profile = await getCurrentUserProfile();
+                if (profile && !profile.is_profile_completed) {
+                    router.push("/profile/edit");
+                } else {
+                    router.push("/");
                 }
             }
-
         } catch (err: unknown) {
             let errorMessage = "Đã xảy ra lỗi";
             if (err instanceof Error) errorMessage = err.message;
             else if (typeof err === "string") errorMessage = err;
             setError(errorMessage);
-        } finally {
             setLoading(false);
         }
     }
 
-    // Xử lý Quên mật khẩu
-    const handleForgotPassword = async () => {
-        if (!email) {
-            setError("Vui lòng nhập email vào ô bên trên để lấy lại mật khẩu.");
-            return;
-        }
-        setLoading(true);
-        setError("");
-        try {
-            // Gửi OTP để reset pass
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: { shouldCreateUser: false }
-            });
-            if (error) throw error;
-
-            // Chuyển hướng sang trang Reset Password (bạn cần tạo file này như hướng dẫn trước)
-            router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
-        } catch (err: unknown) {
-            let errorMessage = "Lỗi gửi yêu cầu";
-            if (err instanceof Error) errorMessage = err.message;
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
+    const handleForgotPassword = () => {
+        router.push("/auth/reset-password");
     };
 
     if (authLoading) return <LoadingSpinner />;
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#FFC5D3] p-4 font-sans">
-            <div className="bg-white/90 dark:bg-gray-900 rounded-[30px] shadow-2xl overflow-hidden flex max-w-5xl w-full min-h-[600px] relative">
-                {/* Background Decor */}
-                <div className="absolute top-0 left-0 w-32 h-32 bg-pink-400/20 rounded-br-full z-0 pointer-events-none blur-xl"></div>
-                <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-400/20 rounded-tl-full z-0 pointer-events-none blur-xl"></div>
+        <PageWrapper>
+            {/* GSAP Floating Background */}
+            <FloatingHeartsBackground />
 
-                {/* Left Side (Image) */}
-                <div ref={imageRef} className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#ff9a9e] to-[#fecfef] relative flex-col justify-between p-8 text-white auth-image">
-                    <div className="text-3xl font-serif font-bold tracking-wide">Stream Match</div>
-                    <div className="flex-1 flex items-center justify-center relative">
-                        <div className="relative w-full h-64">
-                            <img
-                                src="/rom.svg"
-                                alt="Couple"
-                                className="w-full object-cover mix-blend-multiply opacity-80 rounded-xl"
-                                onError={(e) => e.currentTarget.style.display = 'none'}
-                            />
-                        </div>
-                    </div>
-                    <div className="text-center"><p className="text-lg font-medium opacity-90">Kết nối yêu thương, xây dựng hạnh phúc.</p></div>
-                </div>
+            {/* Main Glass Card */}
+            <AuthCard ref={cardRef}>
+                {/* --- LEFT PANEL: Illustration --- */}
+                {!isMobile && (
+                    <LeftPanel>
+                        {/* Decorative Circles */}
+                        <Box sx={{ position: 'absolute', width: 300, height: 300, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', top: -50, left: -50 }} />
+                        <Box sx={{ position: 'absolute', width: 200, height: 200, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', bottom: 50, right: -20 }} />
 
-                {/* Right Side (Form) */}
-                <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center relative z-10 bg-white dark:bg-gray-800">
-                    <div ref={formRef} className="max-w-sm mx-auto w-full">
-                        <div className="text-center mb-8">
-                            <h1 className="text-4xl font-bold text-[#E94086] dark:text-pink-400 mb-2">
-                                {view === 'login' ? 'Đăng Nhập' : view === 'signup' ? 'Đăng Ký' : 'Xác Minh OTP'}
-                            </h1>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                {view === 'verify_signup'
-                                    ? `Nhập mã xác nhận vừa gửi tới email`
-                                    : 'Chào mừng bạn đến với StreamMatch'}
-                            </p>
-                        </div>
-
-                        <form className="space-y-5" onSubmit={handleAuth}>
-                            {/* Luôn hiện Email để tránh mất state, disable khi đang verify */}
-                            <div className="auth-input relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MailIcon /></div>
-                                <input
-                                    type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                                    disabled={view === 'verify_signup'}
-                                    className={`block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-[#E94086] focus:outline-none dark:bg-gray-700 dark:text-white ${view === 'verify_signup' ? 'opacity-70 bg-gray-100' : ''}`}
-                                    placeholder="Email của bạn"
-                                />
-                            </div>
-
-                            {/* Password (Hiện khi Login & Signup) */}
-                            {view !== 'verify_signup' && (
-                                <div className="auth-input relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><LockIcon /></div>
-                                    <input
-                                        type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-[#E94086] focus:outline-none dark:bg-gray-700 dark:text-white"
-                                        placeholder="Mật khẩu"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Confirm Password (Chỉ hiện khi Signup) */}
-                            {view === 'signup' && (
-                                <div className="auth-input relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><LockIcon /></div>
-                                    <input
-                                        type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-[#E94086] focus:outline-none dark:bg-gray-700 dark:text-white"
-                                        placeholder="Xác nhận mật khẩu"
-                                    />
-                                </div>
-                            )}
-
-                            {/* OTP Input (Chỉ hiện khi Verify Signup) */}
-                            {view === 'verify_signup' && (
-                                <div className="auth-input relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><KeyIcon /></div>
-                                    <input
-                                        type="text" required maxLength={8} value={otp}
-                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-[#E94086] focus:outline-none dark:bg-gray-700 dark:text-white tracking-widest text-lg font-bold text-center"
-                                        placeholder="Nhập mã xác nhận"
-                                        autoFocus
-                                    />
-                                </div>
-                            )}
-
-                            {/* Remember & Forgot Pass (Chỉ hiện khi Login) */}
-                            {view === 'login' && (
-                                <div className="flex items-center justify-between auth-input text-sm">
-                                    <label className="flex items-center text-gray-600 dark:text-gray-300 cursor-pointer">
-                                        <input
-                                            type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}
-                                            className="mr-2 rounded text-[#E94086] focus:ring-[#E94086]"
-                                        />
-                                        Ghi nhớ đăng nhập
-                                    </label>
-                                    <button type="button" onClick={handleForgotPassword} className="text-[#E94086] hover:underline font-medium">
-                                        Quên mật khẩu?
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Verify Actions */}
-                            {view === 'verify_signup' && (
-                                <div className="flex justify-between items-center auth-input mt-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => switchView('signup')}
-                                        className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                                    >
-                                        ← Đổi Email khác
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleResendOtp}
-                                        disabled={loading}
-                                        className="text-sm font-bold text-[#E94086] hover:text-[#d63376] hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        {loading ? "Đang gửi..." : "Gửi lại mã"}
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Notifications */}
-                            {error && <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse">{error}</div>}
-                            {message && <div className="text-green-600 text-sm text-center bg-green-50 p-2 rounded-lg border border-green-100">{message}</div>}
-
-                            {/* Submit Button */}
-                            <button
-                                type="submit" disabled={loading}
-                                className="auth-input w-full py-3 px-4 rounded-xl shadow-md text-sm font-bold text-white bg-[#E94086] hover:bg-[#d63376] transition-all transform hover:scale-[1.02] disabled:opacity-50"
+                        <Box sx={{ position: 'relative', zIndex: 2, textAlign: 'center' }}>
+                            <Box
+                                ref={illustrationRef}
+                                sx={{
+                                    width: '100%',
+                                    maxWidth: 240,
+                                    height: 'auto',
+                                    mb: 3,
+                                    borderRadius: '24px',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+                                }}
                             >
-                                {loading
-                                    ? "ĐANG XỬ LÝ..."
-                                    : view === 'login' ? "ĐĂNG NHẬP"
-                                        : view === 'signup' ? "ĐĂNG KÝ"
-                                            : "XÁC NHẬN"}
-                            </button>
-                        </form>
+                                <img
+                                    src="/rom.svg"
+                                    alt="Romantic Couple"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    onError={(e) => e.currentTarget.style.display = 'none'}
+                                />
+                            </Box>
+                            <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, mb: 1 }}>
+                                Find Your Missing Piece
+                            </Typography>
+                            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                                Kết nối trái tim, chia sẻ yêu thương
+                            </Typography>
+                        </Box>
+                    </LeftPanel>
+                )}
 
-                        <div className="relative my-6 auth-input">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
-                            <div className="relative flex justify-center text-sm"><span className="px-2 bg-white dark:bg-gray-800 text-gray-500">Hoặc</span></div>
-                        </div>
+                {/* --- RIGHT PANEL: Form --- */}
+                <RightPanel>
+                    <Box sx={{ textAlign: 'center', mb: 4 }}>
+                        <Typography
+                            variant="h3"
+                            sx={{
+                                fontWeight: 800,
+                                background: 'linear-gradient(45deg, #E94086, #FF99AC)',
+                                backgroundClip: 'text',
+                                textFillColor: 'transparent',
+                                mb: 1,
+                                letterSpacing: '-0.02em'
+                            }}
+                        >
+                            {view === 'login' ? "Welcome Back" : view === 'signup' ? "Join Us" : "Verify OTP"}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {view === 'verify_signup'
+                                ? "Nhập mã xác nhận chúng tôi vừa gửi"
+                                : "Bắt đầu hành trình tìm kiếm hạnh phúc của bạn"}
+                        </Typography>
+                    </Box>
 
-                        {/* Toggle View */}
+                    <form ref={formRef} onSubmit={handleAuth} style={{ width: '100%' }}>
+                        {/* EMAIL INPUT */}
+                        <Box sx={{ mb: 2 }}>
+                            <RomanticTextField
+                                fullWidth
+                                label="Địa chỉ Email"
+                                variant="outlined"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={view === 'verify_signup' || loading}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SvgIconWrapper color="#E94086"><Icons.Mail /></SvgIconWrapper>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                        </Box>
+
+                        {/* PASSWORD INPUT */}
                         {view !== 'verify_signup' && (
-                            <div className="text-center auth-input">
-                                {view === 'login' ? (
-                                    <button onClick={() => switchView('signup')} className="text-gray-600 dark:text-gray-300 text-sm">
-                                        Chưa có tài khoản? <span className="text-[#E94086] font-bold">Đăng ký ngay</span>
-                                    </button>
-                                ) : (
-                                    <button onClick={() => switchView('login')} className="text-gray-600 dark:text-gray-300 text-sm">
-                                        Đã có tài khoản? <span className="text-[#E94086] font-bold">Đăng nhập</span>
-                                    </button>
-                                )}
-                            </div>
+                            <Box sx={{ mb: 2 }}>
+                                <RomanticTextField
+                                    fullWidth
+                                    label="Mật khẩu"
+                                    type="password"
+                                    variant="outlined"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    disabled={loading}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SvgIconWrapper color="#E94086"><Icons.Lock /></SvgIconWrapper>
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Box>
                         )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-};
+
+                        {/* CONFIRM PASSWORD */}
+                        {view === 'signup' && (
+                            <Box sx={{ mb: 2 }}>
+                                <RomanticTextField
+                                    fullWidth
+                                    label="Xác nhận mật khẩu"
+                                    type="password"
+                                    variant="outlined"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    disabled={loading}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SvgIconWrapper color="#E94086"><Icons.Lock /></SvgIconWrapper>
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Box>
+                        )}
+
+                        {/* OTP INPUT */}
+                        {view === 'verify_signup' && (
+                            <Box sx={{ mb: 3 }}>
+                                <RomanticTextField
+                                    fullWidth
+                                    placeholder="XXXXXX"
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                                    disabled={loading}
+                                    inputProps={{
+                                        maxLength: 8,
+                                        style: { textAlign: 'center', fontSize: '1.25rem', letterSpacing: '0.5em', fontWeight: 'bold' }
+                                    }}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SvgIconWrapper color="#E94086"><Icons.Key /></SvgIconWrapper>
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Box>
+                        )}
+
+                        {/* LOGIN EXTRAS */}
+                        {view === 'login' && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={rememberMe}
+                                            onChange={(e) => setRememberMe(e.target.checked)}
+                                            sx={{ color: '#E94086', '&.Mui-checked': { color: '#E94086' } }}
+                                        />
+                                    }
+                                    label={<Typography variant="body2" color="text.secondary">Ghi nhớ tôi</Typography>}
+                                />
+                                <MuiLink
+                                    component="button"
+                                    type="button"
+                                    onClick={handleForgotPassword}
+                                    underline="hover"
+                                    sx={{ color: '#E94086', fontWeight: 600, fontSize: '0.875rem' }}
+                                >
+                                    Quên mật khẩu?
+                                </MuiLink>
+                            </Box>
+                        )}
+
+                        {/* NOTIFICATIONS */}
+                        {error && <Fade in><Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>{error}</Alert></Fade>}
+                        {message && <Fade in><Alert severity="success" sx={{ mb: 2, borderRadius: '12px' }}>{message}</Alert></Fade>}
+
+                        {/* VERIFY ACTIONS */}
+                        {view === 'verify_signup' && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                                <Button size="small" onClick={() => switchView('signup')} sx={{ color: '#888' }}>
+                                    Quay lại
+                                </Button>
+                                <Button size="small" onClick={handleResendOtp} disabled={loading} sx={{ color: '#E94086', fontWeight: 'bold' }}>
+                                    Gửi lại mã
+                                </Button>
+                            </Box>
+                        )}
+
+                        {/* SUBMIT BUTTON */}
+                        <GlowButton
+                            fullWidth
+                            type="submit"
+                            disabled={loading}
+                            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                        >
+                            {loading ? "Đang xử lý..." : (
+                                view === 'login' ? "Đăng Nhập" :
+                                    view === 'signup' ? "Tạo Tài Khoản" : "Xác Nhận"
+                            )}
+                        </GlowButton>
+
+                        {/* SWITCH VIEW */}
+                        {view !== 'verify_signup' && (
+                            <Box sx={{ mt: 3, textAlign: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {view === 'login' ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
+                                    <MuiLink
+                                        component="button"
+                                        type="button"
+                                        onClick={() => switchView(view === 'login' ? 'signup' : 'login')}
+                                        sx={{ color: '#E94086', fontWeight: 700, textDecoration: 'none', cursor: 'pointer' }}
+                                    >
+                                        {view === 'login' ? "Đăng ký ngay" : "Đăng nhập"}
+                                    </MuiLink>
+                                </Typography>
+                            </Box>
+                        )}
+                    </form>
+                </RightPanel>
+            </AuthCard>
+        </PageWrapper>
+    );
+}
 
 export default AuthPage;
 
+// --- Loading Spinner Component ---
 export function LoadingSpinner() {
-    const spinnerRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (spinnerRef.current) {
-            gsap.to(spinnerRef.current, { rotation: 360, repeat: -1, ease: "linear", duration: 1 });
-        }
-    }, []);
     return (
-        <div className="flex items-center justify-center h-screen bg-[#FFC5D3]">
-            <div ref={spinnerRef} className="w-12 h-12 border-4 border-white border-t-[#E94086] rounded-full"></div>
-        </div>
+        <Box sx={{
+            height: '100vh',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#FFC5D3'
+        }}>
+            <CircularProgress sx={{ color: '#E94086' }} size={60} thickness={4} />
+        </Box>
     );
 };
