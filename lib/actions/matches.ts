@@ -67,15 +67,24 @@ function formatHobbies(
 }
 
 // 1. LẤY DANH SÁCH GỢI Ý (Discovery)
+interface RawUserHobby {
+  hobbies: Hobby | null;
+}
+
+// Định nghĩa kiểu dữ liệu thô trả về từ RPC + Select
+// Nó bao gồm các trường của UserProfile + mảng user_hobbies từ phép join
+interface RawPotentialMatch extends Omit<UserProfile, 'hobbies' | 'latitude' | 'longitude'> {
+  user_hobbies: RawUserHobby[] | null;
+  location: string; // PostGIS trả về chuỗi POINT(x y)
+}
+
 export async function getPotentialMatches(): Promise<UserProfile[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) throw new Error("Not authenticated.");
 
-  // A. Lấy Preferences của mình & Danh sách những người mình ĐÃ LIKE
+  // 1. Lấy Preferences và Danh sách đã Like
   const [prefsResponse, likesResponse] = await Promise.all([
     supabase.from("users").select("preferences").eq("id", user.id).single(),
     supabase.from("likes").select("to_user_id").eq("from_user_id", user.id),
@@ -84,47 +93,48 @@ export async function getPotentialMatches(): Promise<UserProfile[]> {
   const userPrefs = (prefsResponse.data?.preferences || {}) as UserPreferences;
   const likedUserIds = (likesResponse.data || []).map((l) => l.to_user_id);
 
-  // Thêm chính mình vào danh sách loại trừ
-  const excludeIds = [user.id, ...likedUserIds];
+  // Chuẩn bị tham số cho RPC
+  const minAge = userPrefs.age_range?.min || 18;
+  const maxAge = userPrefs.age_range?.max || 50;
+  const distanceMeters = (userPrefs.distance || 50) * 1000;
+  const genderPref = userPrefs.gender_preference || [];
 
-  // B. Query danh sách Users (Chưa Like + Không phải mình)
-  // Lưu ý: Lấy kèm user_hobbies và hobbies
-  let query = supabase
-    .from("users")
-    .select(
-      `
+  // 2. GỌI RPC
+  const { data, error } = await supabase
+    .rpc("find_potential_matches", {
+      min_age: minAge,
+      max_age: maxAge,
+      gender_pref: genderPref,
+      dist_meters: distanceMeters,
+      excluded_ids: likedUserIds,
+    })
+    .select(`
       *,
       user_hobbies (
         hobbies ( * )
       )
-    `
-    )
-    .not("id", "in", `(${excludeIds.join(",")})`) // Loại trừ ID đã like
-    .limit(20);
-
-  // C. Lọc theo giới tính (Nếu có setting)
-  const genderPref = userPrefs?.gender_preference as string[] | undefined;
-  if (genderPref && genderPref.length > 0) {
-    query = query.in("gender", genderPref);
-  }
-
-  const { data: potentialMatches, error } = await query;
+    `);
 
   if (error) {
-    console.error("Error fetching potential matches:", error);
+    console.error("Error fetching matches via RPC:", error);
     throw new Error("Failed to fetch matches");
   }
 
-  // D. Map dữ liệu về chuẩn UserProfile
-  return potentialMatches.map((match) => {
+  // ÉP KIỂU AN TOÀN TẠI ĐÂY
+  // Supabase trả về data dạng mảng object, ta ép nó về đúng cấu trúc RawPotentialMatch
+  const rawMatches = data as unknown as RawPotentialMatch[];
+
+  // 3. Map dữ liệu
+  return rawMatches.map((match) => {
+    // Bây giờ 'match' đã có kiểu dữ liệu rõ ràng, TypeScript sẽ gợi ý code
     const { latitude, longitude } = parsePostGISLocation(match.location);
 
     return {
-      ...match,
+      ...match, // Spread các trường cơ bản (id, full_name...)
       latitude,
       longitude,
-      hobbies: formatHobbies(match.user_hobbies), // Xử lý hobbies
-      preferences: match.preferences, // JSONB
+      hobbies: formatHobbies(match.user_hobbies), // Hàm này đã nhận đúng kiểu RawUserHobby[]
+      preferences: match.preferences as Record<string, unknown>, // Đảm bảo đúng kiểu cho JSONB
     };
   });
 }
