@@ -1,317 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🔥 Tinder Web App (Next.js 16 + Supabase + Stream Chat)
 
-## Getting Started
+Một ứng dụng hẹn hò hiện đại được xây dựng với **Next.js 16 (App Router)**, tích hợp định vị thời gian thực với **PostGIS**, nhắn tin và gọi video qua **GetStream**, và hiệu ứng vuốt mượt mà với **GSAP**.
 
-First, run the development server:
+## 🚀 Tính năng chính
+
+-   **Authentication:** Đăng nhập, Đăng ký, Quên mật khẩu, Xác thực OTP qua Email (Supabase Auth).
+-   **Discovery (Swipe):** Giao diện vuốt trái/phải mượt mà sử dụng GSAP Draggable.
+-   **Matching thông minh:**
+    -   Tìm người dùng xung quanh dựa trên vị trí địa lý (PostGIS).
+    -   Bộ lọc theo độ tuổi, giới tính và khoảng cách.
+-   **Real-time Chat:** Nhắn tin tức thời, gửi ảnh (Stream Chat).
+-   **Video Call:** Gọi video trực tiếp giữa 2 người dùng đã match (Stream Video).
+-   **Profile Management:**
+    -   Cập nhật thông tin cá nhân, Bio.
+    -   Upload nhiều ảnh (Supabase Storage).
+    -   Chọn sở thích (Hobbies).
+-   **Leaderboard:** Bảng xếp hạng những người dùng được yêu thích nhất.
+
+## 🛠 Tech Stack
+
+-   **Frontend:** Next.js 16, TypeScript, Tailwind CSS, Material UI (MUI).
+-   **Backend / Database:** Supabase (PostgreSQL, Auth, Storage, Realtime).
+-   **Location Service:** PostGIS (SQL Extension).
+-   **Chat & Video:** Stream Chat & Video SDK.
+-   **Animations:** GSAP (GreenSock Animation Platform).
+-   **Forms & Validation:** React Hook Form.
+
+---
+
+## ⚙️ Cài đặt và Chạy dự án
+
+### 1. Clone dự án
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+git clone [https://github.com/PQ-Thinh/Tinder-Web-App.git](https://github.com/PQ-Thinh/Tinder-Web-App.git)
+cd Tinder-Web-App
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Cấu trúc dự án
 
-## Database 
--- =====================================================
--- StreamMatch V2 - Optimized Schema
--- =====================================================
-
--- 1. EXTENSIONS
--- Bật PostGIS để xử lý vị trí (Tìm người quanh đây)
-CREATE EXTENSION IF NOT EXISTS "postgis";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- =====================================================
--- 2. TABLES
--- =====================================================
-
--- Users table
-CREATE TABLE public.users (
-    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    username TEXT UNIQUE, -- Có thể null lúc đầu, update sau
-    email TEXT UNIQUE NOT NULL,
-    
-    -- Thông tin cá nhân
-    gender TEXT CHECK (gender IN ('male', 'female', 'other', 'unknown')) DEFAULT 'unknown',
-    birthdate DATE, -- Để null ban đầu, bắt buộc update sau
-    bio TEXT,
-    avatar_url TEXT,
-    
-    -- Sở thích (JSONB t)
-    preferences JSONB DEFAULT '{"age_range": {"min": 18, "max": 50}, "distance": 25, "gender_preference": []}'::jsonb,
-    
-    -- QUAN TRỌNG: Dùng kiểu dữ liệu Địa Lý của PostGIS
-    -- Point(Kinh độ, Vĩ độ) - Lưu ý thứ tự: Longitude trước, Latitude sau
-    location GEOGRAPHY(POINT), 
-     -- display_address: Dùng để hiển thị tên thành phố (Người đọc) - Vd: "Hà Nội, Việt Nam"
-    display_address TEXT, 
-    
-    -- Trạng thái
-    is_profile_completed BOOLEAN DEFAULT FALSE, -- Cờ để Frontend biết điều hướng
-    last_active TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_verified BOOLEAN DEFAULT FALSE,
-    is_online BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
--- Thêm cột photos dạng mảng text, mặc định là mảng rỗng
-ALTER TABLE public.users 
-ADD COLUMN photos TEXT[] DEFAULT '{}';
-
--- (Tùy chọn) Thêm ràng buộc kiểm tra để đảm bảo không quá 5 ảnh
-ALTER TABLE public.users 
-ADD CONSTRAINT check_photos_length CHECK (array_length(photos, 1) <= 5);
--- Likes table
-CREATE TABLE public.likes (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    from_user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    to_user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    is_super_like BOOLEAN DEFAULT FALSE, -- Thêm tính năng Super Like (tùy chọn)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(from_user_id, to_user_id) -- Một người chỉ like người kia 1 lần
-);
-
--- Matches table
-CREATE TABLE public.matches (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user1_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    user2_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE, -- False nếu 1 người unmatch
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user1_id, user2_id)
-);
--- Hobbies Table (Tạo bảng Danh sách Sở thích (Master Data))
-CREATE TABLE public.hobbies (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE, -- Ví dụ: "Đá bóng", "Du lịch"
-    icon TEXT, -- Ví dụ: "⚽", "✈️" hoặc đường dẫn ảnh
-    category TEXT, -- Ví dụ: "Thể thao", "Nghệ thuật" (để phân loại hiển thị)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
---  Tạo bảng Liên kết (User <-> Hobbies)
-CREATE TABLE public.user_hobbies (
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-    hobby_id UUID REFERENCES public.hobbies(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    PRIMARY KEY (user_id, hobby_id) -- Đảm bảo 1 user không chọn trùng 1 sở thích 2 lần
-);
--- =====================================================
--- 3. INDEXES (Tối ưu hiệu năng)
--- =====================================================
-
--- Index cơ bản
-CREATE INDEX idx_users_username ON public.users(username);
-CREATE INDEX idx_users_email ON public.users(email);
-CREATE INDEX idx_users_gender ON public.users(gender);
-CREATE INDEX idx_users_birthdate ON public.users(birthdate);
-CREATE INDEX idx_users_last_active ON public.users(last_active);
-CREATE INDEX idx_users_created_at ON public.users(created_at);
-
--- QUAN TRỌNG: Spatial Index (GIST) cho PostGIS
--- Giúp truy vấn "Tìm người trong bán kính 10km" cực nhanh
-CREATE INDEX idx_users_location ON public.users USING GIST (location);
-
--- Likes table indexes
-CREATE INDEX idx_likes_from_user ON public.likes(from_user_id);
-CREATE INDEX idx_likes_to_user ON public.likes(to_user_id);
-CREATE INDEX idx_likes_created_at ON public.likes(created_at);
-
--- Matches table indexes
-CREATE INDEX idx_matches_user1 ON public.matches(user1_id);
-CREATE INDEX idx_matches_user2 ON public.matches(user2_id);
-CREATE INDEX idx_matches_created_at ON public.matches(created_at);
-CREATE INDEX idx_matches_is_active ON public.matches(is_active);
-
--- =====================================================
--- 4. RLS POLICIES (Bảo mật & Quyền truy cập)
--- =====================================================
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.likes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.hobbies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_hobbies ENABLE ROW LEVEL SECURITY;
-
-
--- [USERS TABLE]
--- 1. Xem chính mình: Được xem tất cả
-CREATE POLICY "Users can see own profile" ON public.users
-    FOR SELECT USING (auth.uid() = id);
-
--- 2. Xem người khác (Discovery): 
--- Chỉ cho phép người dùng đã đăng nhập xem hồ sơ người khác
--- Thực tế: Bạn nên ẩn email/phone của người khác ở Frontend hoặc dùng View
-CREATE POLICY "Users can see other profiles" ON public.users
-    FOR SELECT USING (auth.role() = 'authenticated');
-
--- 3. Cập nhật chính mình: Chỉ chủ nhân mới được sửa
-CREATE POLICY "Users can update own profile" ON public.users
-    FOR UPDATE USING (auth.uid() = id);
-
--- [LIKES TABLE]
--- 1. Xem like: Xem những like mình gửi đi hoặc mình nhận được
-CREATE POLICY "View own likes" ON public.likes
-    FOR SELECT USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
-
--- 2. Tạo like: Chỉ được tạo like xuất phát từ mình
-CREATE POLICY "Create like" ON public.likes
-    FOR INSERT WITH CHECK (auth.uid() = from_user_id);
-
--- 3. Xóa like (Unlike): Chỉ xóa like của mình
-CREATE POLICY "Delete own like" ON public.likes
-    FOR DELETE USING (auth.uid() = from_user_id);
-
--- [MATCHES TABLE]
--- 1. Xem match: Chỉ xem match có mặt mình
-CREATE POLICY "View matches" ON public.matches
-    FOR SELECT USING (auth.uid() = user1_id OR auth.uid() = user2_id);
---2. cập nhật match:
-CREATE POLICY "Users can update own matches" ON public.matches
-    FOR UPDATE
-    USING (auth.uid() = user1_id OR auth.uid() = user2_id);
-
-
-    --[HOBBIES TABLE]
--- 1.Ai cũng xem được danh sách sở thích để chọn
-CREATE POLICY "Everyone can read hobbies" ON public.hobbies
-    FOR SELECT USING (true);
-
--- Chỉ Admin (service_role) mới được thêm/sửa sở thích mới
--- (Bạn có thể tự thêm dữ liệu bằng tay trong Dashboard Supabase)
-
--- [UER_HOBBIES TABLE]
--- 1.Xem: Ai cũng xem được sở thích của người khác
-CREATE POLICY "View user hobbies" ON public.user_hobbies
-    FOR SELECT USING (auth.role() = 'authenticated');
-
--- 2.Thêm/Xóa: User chỉ được chỉnh sửa sở thích của chính mình
-CREATE POLICY "Manage own hobbies" ON public.user_hobbies
-    FOR ALL USING (auth.uid() = user_id);
-
--- =====================================================
--- 5. TRIGGERS & FUNCTIONS
--- =====================================================
-
--- Tự động cập nhật updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER tr_users_updated_at BEFORE UPDATE ON public.users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-    
--- Tự động tạo User Profile khi Đăng ký
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO public.users (
-        id,
-        email,
-        full_name,
-        username,
-        avatar_url,
-        is_profile_completed -- Mặc định là FALSE
-    ) VALUES (
-        NEW.id,
-        NEW.email,
-        -- Lấy tên từ metadata hoặc cắt từ email
-        COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-        COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
-        NEW.raw_user_meta_data->>'avatar_url',
-        FALSE 
-    );
-    RETURN NEW;
-END;
-$$ language 'plpgsql' SECURITY DEFINER;
-
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-
-CREATE OR REPLACE FUNCTION handle_new_like()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Kiểm tra xem người kia đã like mình chưa
-    IF EXISTS (
-        SELECT 1 FROM public.likes 
-        WHERE from_user_id = NEW.to_user_id 
-        AND to_user_id = NEW.from_user_id
-    ) THEN
-        -- Tạo Match hoặc Hồi sinh Match cũ
-        INSERT INTO public.matches (user1_id, user2_id, is_active)
-        VALUES (
-            LEAST(NEW.from_user_id, NEW.to_user_id),
-            GREATEST(NEW.from_user_id, NEW.to_user_id),
-            TRUE
-        )
-        ON CONFLICT (user1_id, user2_id) 
-        DO UPDATE SET 
-            is_active = TRUE, -- Hồi sinh match
-            created_at = NOW(); -- Cập nhật thời gian match mới nhất
-    END IF;
-    
-    -- Cập nhật last_active
-    UPDATE public.users SET last_active = NOW() WHERE id = NEW.from_user_id;
-    
-    RETURN NEW;
-END;
-$$ language 'plpgsql' SECURITY DEFINER;
-
-CREATE TRIGGER tr_handle_new_like AFTER INSERT ON public.likes
-    FOR EACH ROW EXECUTE FUNCTION handle_new_like();
-
--- =====================================================
--- 6. RPC FUNCTION (Hàm hỗ trợ tìm kiếm vị trí)
--- =====================================================
-
--- Hàm tìm người dùng trong bán kính (Gọi từ Frontend)
--- Cách dùng: supabase.rpc('get_users_nearby', { radius_meters: 5000 })
-CREATE OR REPLACE FUNCTION get_users_nearby(radius_meters float)
-RETURNS SETOF public.users AS $$
-DECLARE
-  my_location geography;
-  my_id uuid;
-BEGIN
-  -- Lấy ID và vị trí của người đang gọi hàm
-  my_id := auth.uid();
-  SELECT location INTO my_location FROM public.users WHERE id = my_id;
-
-  -- Trả về danh sách user trong bán kính, trừ bản thân
-  RETURN QUERY
-  SELECT *
-  FROM public.users
-  WHERE id <> my_id
-  AND ST_DWithin(location, my_location, radius_meters)
-  AND is_profile_completed = TRUE -- Chỉ hiện người đã hoàn thiện hồ sơ
-  LIMIT 100;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- =====================================================
--- 4. SEED DATA (Dữ liệu mẫu cho Sở thích)
--- =====================================================
-INSERT INTO public.hobbies (name, icon, category) VALUES
-('Đá bóng', '⚽', 'Thể thao'),
-('Gym', '💪', 'Thể thao'),
-('Bơi lội', '🏊', 'Thể thao'),
-('Du lịch', '✈️', 'Lifestyle'),
-('Chụp ảnh', '📸', 'Nghệ thuật'),
-('Nấu ăn', '🍳', 'Lifestyle'),
-('Đọc sách', '📚', 'Giáo dục'),
-('Gaming', '🎮', 'Giải trí'),
-('Nghe nhạc', '🎵', 'Giải trí'),
-('Nuôi thú cưng', '🐶', 'Lifestyle'),
-('Cafe', '☕', 'Lifestyle'),
-('Leo núi', 'mountains', 'Thể thao')
-ON CONFLICT (name) DO NOTHING;
+```bash
+.
+├── app/                  # Next.js App Router
+│   ├── auth/             # Các trang xác thực (Login, Register, Reset Pass)
+│   ├── chat/             # Giao diện Chat & Video Call
+│   ├── matches/          # Logic Swipe & Discovery
+│   ├── profile/          # Quản lý hồ sơ cá nhân
+│   └── layout.tsx        # Root Layout & Context Providers
+├── components/           # UI Components (Reusable)
+├── lib/
+│   ├── actions/          # Server Actions (Xử lý logic backend)
+│   ├── supabase/         # Config Supabase Client/Server
+│   └── stream-chat-client.ts # Config Stream Chat
+├── contexts/             # React Context (Auth, Message)
+└── public/               # Static assets
