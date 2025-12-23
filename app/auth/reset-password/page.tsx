@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
 import gsap from "gsap";
 import Link from "next/link";
 
@@ -23,7 +23,8 @@ const KeyIcon = () => (
     </svg>
 );
 
-export default function ResetPasswordPage() {
+// --- Component Chính Chứa Logic ---
+function ResetPasswordContent() {
     const searchParams = useSearchParams();
 
     // Step 1: Nhập Email & Gửi OTP
@@ -302,5 +303,18 @@ export default function ResetPasswordPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+// --- Default Export Bọc Suspense ---
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen w-full flex items-center justify-center bg-[#FFC5D3]">
+                <div className="text-white font-bold text-xl animate-pulse">Đang tải...</div>
+            </div>
+        }>
+            <ResetPasswordContent />
+        </Suspense>
     );
 }
