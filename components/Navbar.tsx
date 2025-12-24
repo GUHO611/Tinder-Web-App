@@ -6,7 +6,7 @@ import { useMessage } from "@/contexts/message-context";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { gsap } from "gsap";
-import { UserCircle } from "lucide-react"
+import { UserCircle } from "lucide-react";
 
 // --- 1. ĐỊNH NGHĨA LIST ICON & MENU ITEMS ---
 const NAV_ITEMS = [
@@ -16,8 +16,20 @@ const NAV_ITEMS = [
     activeGradient: "from-orange-500 to-red-500",
     hoverText: "group-hover:text-orange-500", // Màu khi hover
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-    )
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+    ),
   },
   {
     label: "Ghép Đôi",
@@ -25,8 +37,20 @@ const NAV_ITEMS = [
     activeGradient: "from-pink-500 to-purple-500",
     hoverText: "group-hover:text-pink-500", // Màu khi hover
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-    )
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+        />
+      </svg>
+    ),
   },
   {
     label: "Tin Nhắn",
@@ -34,8 +58,20 @@ const NAV_ITEMS = [
     activeGradient: "from-blue-500 to-cyan-500",
     hoverText: "group-hover:text-blue-500", // Màu khi hover
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-    )
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+        />
+      </svg>
+    ),
   },
   {
     label: "Hồ Sơ",
@@ -43,8 +79,20 @@ const NAV_ITEMS = [
     activeGradient: "from-green-500 to-emerald-500",
     hoverText: "group-hover:text-green-500", // Màu khi hover
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-    )
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+        />
+      </svg>
+    ),
   },
 ];
 
@@ -81,29 +129,36 @@ const NavLink = ({
       <Link
         href={href}
         onClick={onClick}
-        className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group relative overflow-hidden ${isActive
-          ? "bg-gray-100 dark:bg-gray-800 shadow-inner"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-          }`}
+        className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+          isActive
+            ? "bg-gray-100 dark:bg-gray-800 shadow-inner"
+            : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+        }`}
       >
-        <div className={`p-2.5 rounded-xl transition-all duration-300 shadow-sm relative ${isActive
-          ? `bg-gradient-to-br ${activeGradient} text-white scale-110 shadow-md`
-          : `bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 ${hoverText} group-hover:scale-110 group-hover:shadow-md`
-          }`}>
+        <div
+          className={`p-2.5 rounded-xl transition-all duration-300 shadow-sm relative ${
+            isActive
+              ? `bg-gradient-to-br ${activeGradient} text-white scale-110 shadow-md`
+              : `bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 ${hoverText} group-hover:scale-110 group-hover:shadow-md`
+          }`}
+        >
           {icon}
 
           {/* Unread notification dot for mobile */}
           {unreadCount > 0 && (
             <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold shadow-sm">
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {unreadCount > 99 ? "99+" : unreadCount}
             </div>
           )}
         </div>
 
-        <span className={`text-lg font-bold transition-colors duration-300 ${isActive
-          ? `text-transparent bg-clip-text bg-gradient-to-r ${activeGradient}`
-          : `text-gray-700 dark:text-gray-200 ${hoverText}` // Thêm hoverText vào đây
-          }`}>
+        <span
+          className={`text-lg font-bold transition-colors duration-300 ${
+            isActive
+              ? `text-transparent bg-clip-text bg-gradient-to-r ${activeGradient}`
+              : `text-gray-700 dark:text-gray-200 ${hoverText}` // Thêm hoverText vào đây
+          }`}
+        >
           {label}
         </span>
       </Link>
@@ -115,34 +170,44 @@ const NavLink = ({
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition-all duration-300 group relative ${isActive
-        ? "bg-white/90 dark:bg-gray-800/90 shadow-sm border border-gray-100 dark:border-gray-700"
-        : "hover:bg-white/40 dark:hover:bg-gray-800/40"
-        }`}
+      className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition-all duration-300 group relative ${
+        isActive
+          ? "bg-white/90 dark:bg-gray-800/90 shadow-sm border border-gray-100 dark:border-gray-700"
+          : "hover:bg-white/40 dark:hover:bg-gray-800/40"
+      }`}
     >
-      <div className={`p-1.5 rounded-lg transition-all duration-300 relative ${isActive
-        ? `bg-gradient-to-br ${activeGradient} text-white shadow-md scale-105`
-        : `bg-white dark:bg-gray-800 text-gray-400 ${hoverText} group-hover:scale-110 shadow-sm`
-        }`}>
+      <div
+        className={`p-1.5 rounded-lg transition-all duration-300 relative ${
+          isActive
+            ? `bg-gradient-to-br ${activeGradient} text-white shadow-md scale-105`
+            : `bg-white dark:bg-gray-800 text-gray-400 ${hoverText} group-hover:scale-110 shadow-sm`
+        }`}
+      >
         {React.isValidElement(icon)
-          ? React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-5 h-5" })
+          ? React.cloneElement(
+              icon as React.ReactElement<{ className?: string }>,
+              { className: "w-5 h-5" }
+            )
           : icon}
 
         {/* Unread notification dot */}
         {unreadCount > 0 && (
           <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold shadow-sm">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {unreadCount > 99 ? "99+" : unreadCount}
           </div>
         )}
       </div>
 
       {/* --- PHẦN CHỈNH SỬA MÀU CHỮ --- */}
-      <span className={`font-bold text-sm xl:text-base transition-colors duration-300 ${isActive
-        ? `text-transparent bg-clip-text bg-gradient-to-r ${activeGradient}`
-        : isScrolled
-          ? `text-gray-600 dark:text-gray-300 ${hoverText}` // Khi cuộn: Xám -> Màu Hover
-          : `text-gray-900 dark:text-white drop-shadow-sm ${hoverText}` // Khi trong suốt: Đen/Trắng -> Màu Hover (KHÔNG PHẢI MÀU ĐEN)
-        }`}>
+      <span
+        className={`font-bold text-sm xl:text-base transition-colors duration-300 ${
+          isActive
+            ? `text-transparent bg-clip-text bg-gradient-to-r ${activeGradient}`
+            : isScrolled
+            ? `text-gray-600 dark:text-gray-300 ${hoverText}` // Khi cuộn: Xám -> Màu Hover
+            : `text-gray-900 dark:text-white drop-shadow-sm ${hoverText}` // Khi trong suốt: Đen/Trắng -> Màu Hover (KHÔNG PHẢI MÀU ĐEN)
+        }`}
+      >
         {label}
       </span>
     </Link>
@@ -230,7 +295,7 @@ export default function Navbar() {
         opacity: 1,
         duration: 0.4,
         ease: "power2.out",
-        display: "block"
+        display: "block",
       });
     } else {
       gsap.to(mobileMenuRef.current, {
@@ -239,8 +304,9 @@ export default function Navbar() {
         duration: 0.3,
         ease: "power2.in",
         onComplete: () => {
-          if (mobileMenuRef.current) mobileMenuRef.current.style.display = "none";
-        }
+          if (mobileMenuRef.current)
+            mobileMenuRef.current.style.display = "none";
+        },
       });
     }
   }, [isMobileMenuOpen]);
@@ -265,8 +331,17 @@ export default function Navbar() {
             className="flex items-center space-x-2 group z-50"
           >
             <div className="bg-gradient-to-tr from-pink-500 to-orange-500 p-1.5 rounded-xl text-white transform transition-transform group-hover:rotate-12 duration-300 shadow-lg shadow-pink-500/30">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path fillRule="evenodd" d="M12.963 2.286a.75.75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.177A7.547 7.547 0 016.648 6.61a.75.75 0 00-1.152-.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clipRule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12.963 2.286a.75.75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.177A7.547 7.547 0 016.648 6.61a.75.75 0 00-1.152-.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <span className="text-xl font-extrabold bg-gradient-to-r from-pink-600 to-orange-500 bg-clip-text text-transparent tracking-tight">
@@ -285,7 +360,7 @@ export default function Navbar() {
                   key={item.href}
                   {...item}
                   isScrolled={isScrolled}
-                  unreadCount={item.href === '/chat' ? unreadCount : 0}
+                  unreadCount={item.href === "/chat" ? unreadCount : 0}
                 />
               ))}
             </div>
@@ -301,8 +376,18 @@ export default function Navbar() {
                 >
                   <span className="w-48 h-48 rounded rotate-[-40deg] bg-red-600 absolute bottom-0 left-0 -translate-x-full ease-out duration-500 transition-all translate-y-full mb-9 ml-9 group-hover:ml-0 group-hover:mb-32 group-hover:translate-x-0"></span>
                   <span className="relative w-full text-left text-gray-700 transition-colors duration-300 ease-in-out group-hover:text-white flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
                     </svg>
                     Đăng xuất
                   </span>
@@ -330,9 +415,33 @@ export default function Navbar() {
                   className="p-2 text-gray-600 dark:text-gray-300 hover:text-pink-500 transition-colors rounded-xl hover:bg-pink-50 dark:hover:bg-gray-800"
                 >
                   {isMobileMenuOpen ? (
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    <svg
+                      className="w-7 h-7"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
                   ) : (
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <svg
+                      className="w-7 h-7"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
+                    </svg>
                   )}
                 </button>
               ) : (
@@ -341,9 +450,6 @@ export default function Navbar() {
                   href="/auth"
                   className="p-2 text-gray-600 dark:text-gray-300 hover:text-pink-500 transition-colors rounded-xl hover:bg-pink-50 dark:hover:bg-gray-800 flex items-center justify-center"
                 >
-                  {/* <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h-7">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                  </svg> */}
                   <UserCircle className="w-7 h-7" />
                 </Link>
               )}
@@ -356,7 +462,8 @@ export default function Navbar() {
       <div
         ref={mobileMenuRef}
         className="lg:hidden overflow-hidden h-0 opacity-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 absolute w-full left-0 top-[79px] shadow-2xl rounded-b-3xl"
-        style={{ display: "none" }}>
+        style={{ display: "none" }}
+      >
         <div className="container mx-auto px-4 py-6 flex flex-col space-y-3">
           {user && (
             <>
@@ -366,20 +473,37 @@ export default function Navbar() {
                   {...item}
                   mobile
                   onClick={() => setIsMobileMenuOpen(false)}
-                  unreadCount={item.href === '/chat' ? unreadCount : 0}
+                  unreadCount={item.href === "/chat" ? unreadCount : 0}
                 />
               ))}
 
               <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent my-2"></div>
 
               <button
-                onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }}
+                onClick={() => {
+                  handleSignOut();
+                  setIsMobileMenuOpen(false);
+                }}
                 className="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-gray-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 group w-full"
               >
                 <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-red-100 group-hover:text-red-500 transition-colors shadow-sm">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
                 </div>
-                <span className="text-lg font-bold">Đăng xuất</span>
+                <span className="text-lg font-bold dark:text-gray-200 group-hover:text-red-500">
+                  Đăng xuất
+                </span>
               </button>
             </>
           )}
@@ -392,8 +516,19 @@ export default function Navbar() {
             >
               {/* Icon Đăng nhập */}
               <div className="p-1 bg-white/20 rounded-lg backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+                  />
                 </svg>
               </div>
               <span>Đăng nhập ngay</span>

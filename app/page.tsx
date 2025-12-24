@@ -7,35 +7,71 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAuth } from "@/contexts/auth-context";
 
 // MUI Components - Sử dụng Grid2 cho MUI v6
-import { Box, Button, Container, Typography, Paper, Avatar, AvatarGroup } from "@mui/material";
-import Grid from '@mui/material/Grid';
+import {
+  Box,
+  Button,
+  Container,
+  Typography,
+  Paper,
+  Avatar,
+  AvatarGroup,
+} from "@mui/material";
+import Grid from "@mui/material/Grid";
 
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
 // Đăng ký Plugin
 gsap.registerPlugin(ScrollTrigger);
 
 // --- DỮ LIỆU MẪU ---
 const HERO_CARDS = [
-  { id: 1, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&q=80", name: "Jessica, 24", color: "#ec4899" },
-  { id: 2, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80", name: "Sarah, 22", color: "#8b5cf6" },
-  { id: 3, img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&q=80", name: "David, 26", color: "#f43f5e" },
+  {
+    id: 1,
+    img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&q=80",
+    name: "Jessica, 24",
+    color: "#ec4899",
+  },
+  {
+    id: 2,
+    img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80",
+    name: "Sarah, 22",
+    color: "#8b5cf6",
+  },
+  {
+    id: 3,
+    img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&q=80",
+    name: "David, 26",
+    color: "#f43f5e",
+  },
 ];
 
 const FEATURES = [
-  { icon: <BoltRoundedIcon fontSize="large" />, title: "Match Thần Tốc", desc: "Thuật toán AI tìm kiếm người hợp tần số chỉ trong tích tắc." },
-  { icon: <SecurityRoundedIcon fontSize="large" />, title: "An Toàn 100%", desc: "Verified profile. Không fake, không bot, chỉ có người thật." },
-  { icon: <AutoAwesomeRoundedIcon fontSize="large" />, title: "Vibe Check", desc: "Video call trực tiếp để cảm nhận 'tia lửa' trước khi hẹn hò." },
+  {
+    icon: <BoltRoundedIcon sx={{ fontSize: 40 }} />,
+    title: "Match Thần Tốc",
+    desc: "Thuật toán AI tìm kiếm người hợp tần số chỉ trong tích tắc.",
+    color: "#fbbf24",
+  },
+  {
+    icon: <SecurityRoundedIcon sx={{ fontSize: 40 }} />,
+    title: "An Toàn 100%",
+    desc: "Verified profile. Không fake, không bot, chỉ có người thật.",
+    color: "#3b82f6",
+  },
+  {
+    icon: <AutoAwesomeRoundedIcon sx={{ fontSize: 40 }} />,
+    title: "Vibe Check",
+    desc: "Video call trực tiếp để cảm nhận 'tia lửa' trước khi hẹn hò.",
+    color: "#ec4899",
+  },
 ];
 
-
 const VIETNAMESE_FONT = '"Be Vietnam Pro", sans-serif';
-const CTA_PARTICLES = ['❤️', '✨', '🔥', '💖', '💘', '⚡'];
-
+const CTA_PARTICLES = ["❤️", "✨", "🔥", "💖", "💘", "⚡"];
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -53,15 +89,18 @@ export default function LandingPage() {
         opacity: 0,
         duration: 1,
         stagger: 0.15,
-      })
-        .from(".hero-card", {
+      }).from(
+        ".hero-card",
+        {
           y: 800,
           rotation: () => Math.random() * 30 - 15,
           opacity: 0,
           duration: 1.2,
           stagger: 0.1,
           ease: "back.out(1.2)",
-        }, "-=0.8");
+        },
+        "-=0.8"
+      );
 
       // 2. HERO INTERACTION (Parallax)
       const cards = document.querySelectorAll(".hero-card");
@@ -75,12 +114,15 @@ export default function LandingPage() {
           x: (i) => x * (i + 1),
           y: (i) => y * (i + 1),
           duration: 0.5,
-          ease: "power1.out"
+          ease: "power1.out",
         });
       };
 
       if (heroSection) {
-        heroSection.addEventListener("mousemove", handleMouseMove as EventListener);
+        heroSection.addEventListener(
+          "mousemove",
+          handleMouseMove as EventListener
+        );
       }
 
       // 3. FEATURES SCROLL TRIGGER
@@ -102,7 +144,7 @@ export default function LandingPage() {
           trigger: ".stats-section",
           start: "top 85%",
         },
-        textContent: 0,
+        // textContent: 0,
         duration: 2,
         ease: "power1.out",
         snap: { textContent: 1 },
@@ -120,7 +162,7 @@ export default function LandingPage() {
           scale: gsap.utils.random(0.5, 1.5),
           rotation: gsap.utils.random(-360, 360),
           opacity: 0,
-          bottom: -50 // Bắt đầu từ dưới đáy
+          bottom: -50, // Bắt đầu từ dưới đáy
         });
 
         // Tạo animation bay lên
@@ -136,26 +178,30 @@ export default function LandingPage() {
           keyframes: {
             "0%": { opacity: 0 },
             "20%": { opacity: 0.8 }, // Hiện rõ ở đoạn đầu
-            "100%": { opacity: 0 }
-          }
+            "100%": { opacity: 0 },
+          },
         });
       });
 
       // Cleanup
       return () => {
         if (heroSection) {
-          heroSection.removeEventListener("mousemove", handleMouseMove as EventListener);
+          heroSection.removeEventListener(
+            "mousemove",
+            handleMouseMove as EventListener
+          );
         }
       };
-
     }, mainRef);
 
     return () => ctx.revert();
   }, []);
 
   return (
-    <div ref={mainRef} className="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] overflow-x-hidden font-sans text-slate-900 dark:text-white">
-
+    <div
+      ref={mainRef}
+      className="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] overflow-x-hidden font-sans text-slate-900 dark:text-white"
+    >
       {/* --- BACKGROUND ORBS --- */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-500/20 rounded-full blur-[120px] animate-pulse-slow" />
@@ -166,25 +212,46 @@ export default function LandingPage() {
       <section className="hero-section relative z-10 min-h-screen flex items-center justify-center pt-20 pb-10 px-4">
         <Container maxWidth="xl">
           <Grid container spacing={4} alignItems="center">
-
             {/* LEFT: TEXT CONTENT */}
-            <Grid size={{ xs: 12, md: 6 }} className="text-center md:text-left z-20">
+            <Grid
+              size={{ xs: 12, md: 6 }}
+              className="text-center md:text-left z-20"
+            >
               <div className="hero-text-element inline-block px-4 py-1.5 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-pink-200 dark:border-white/10 mb-6">
-                <span className="text-pink-600 dark:text-pink-400 font-bold text-xs tracking-wider uppercase">✨ Dating App thế hệ mới</span>
+                <span className="text-pink-600 dark:text-pink-400 font-bold text-xs tracking-wider uppercase">
+                  ✨ Dating App thế hệ mới
+                </span>
               </div>
 
-              <Typography variant="h1" className="hero-text-element text-5xl md:text-7xl lg:text-8xl font-black mb-6 leading-[1.1] tracking-tighter">
-                Swipe.<br />
+              <Typography
+                variant="h1"
+                className="hero-text-element text-5xl md:text-7xl lg:text-8xl font-black mb-6 leading-[1.1] tracking-tighter"
+              >
+                Swipe.
+                <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-rose-500 to-violet-600">
                   Match. Love.
                 </span>
               </Typography>
 
-              <Typography variant="h5" className="hero-text-element text-slate-600 dark:text-slate-400 mb-10 max-w-lg mx-auto md:mx-0 font-medium leading-relaxed">
-                Không chỉ là quẹt phải. Đây là nơi những câu chuyện tình yêu bắt đầu bằng những khoảnh khắc chân thực nhất.
+              <Typography
+                variant="h5"
+                className="hero-text-element mb-10"
+                sx={{
+                  color: "text-secondary",
+                  maxWidth: "512px", // tương đương max-w-lg
+                  mx: { xs: "auto", md: 0 },
+                  textAlign: { xs: "center", md: "left" },
+                  fontWeight: 500,
+                  lineHeight: 1.625,
+                  fontFamily: VIETNAMESE_FONT,
+                }}
+              >
+                Không chỉ là quẹt phải. Đây là nơi những câu chuyện tình yêu bắt
+                đầu bằng những khoảnh khắc chân thực nhất.
               </Typography>
 
-              <div className="hero-text-element flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+              <div className="hero-text-element flex flex-col sm:flex-row gap-4 justify-center md:justify-start mt-4">
                 <Link href={user ? "/matches" : "/auth"}>
                   <Button
                     variant="contained"
@@ -206,11 +273,32 @@ export default function LandingPage() {
               </div>
 
               <div className="hero-text-element mt-12 flex items-center justify-center md:justify-start gap-4">
-                <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 40, height: 40, borderColor: 'white' } }}>
-                  <Avatar alt="Remy Sharp" src="https://mui.com/static/images/avatar/1.jpg" />
-                  <Avatar alt="Travis Howard" src="https://mui.com/static/images/avatar/2.jpg" />
-                  <Avatar alt="Cindy Baker" src="https://mui.com/static/images/avatar/3.jpg" />
-                  <Avatar alt="Agnes Walker" src="https://mui.com/static/images/avatar/4.jpg" />
+                <AvatarGroup
+                  max={4}
+                  sx={{
+                    "& .MuiAvatar-root": {
+                      width: 40,
+                      height: 40,
+                      borderColor: "white",
+                    },
+                  }}
+                >
+                  <Avatar
+                    alt="Remy Sharp"
+                    src="https://mui.com/static/images/avatar/1.jpg"
+                  />
+                  <Avatar
+                    alt="Travis Howard"
+                    src="https://mui.com/static/images/avatar/2.jpg"
+                  />
+                  <Avatar
+                    alt="Cindy Baker"
+                    src="https://mui.com/static/images/avatar/3.jpg"
+                  />
+                  <Avatar
+                    alt="Agnes Walker"
+                    src="https://mui.com/static/images/avatar/4.jpg"
+                  />
                 </AvatarGroup>
                 <div className="text-left">
                   <p className="font-bold text-lg leading-none">10k+</p>
@@ -220,27 +308,39 @@ export default function LandingPage() {
             </Grid>
 
             {/* RIGHT: CARD STACK ANIMATION */}
-            <Grid size={{ xs: 12, md: 6 }} className="relative h-[500px] flex items-center justify-center">
+            <Grid
+              size={{ xs: 12, md: 6 }}
+              className="relative h-[500px] flex items-center justify-center"
+            >
               {HERO_CARDS.map((card, index) => (
                 <div
                   key={card.id}
                   className="hero-card absolute w-[280px] sm:w-[320px] aspect-[3/4] rounded-[32px] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800"
                   style={{
                     zIndex: index + 1,
-                    transform: `rotate(${(index - 1) * 6}deg) translateX(${(index - 1) * 20}px)`,
-                    left: '50%',
-                    marginLeft: '-160px',
+                    transform: `rotate(${(index - 1) * 6}deg) translateX(${
+                      (index - 1) * 20
+                    }px)`,
+                    left: "50%",
+                    marginLeft: "-160px",
                   }}
                 >
                   <div className="relative w-full h-full">
-                    <img src={card.img} alt={card.name} className="w-full h-full object-cover" />
+                    <img
+                      src={card.img}
+                      alt={card.name}
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                     <div className="absolute bottom-6 left-6 text-white">
                       <h3 className="text-2xl font-bold flex items-center gap-2">
-                        {card.name} <span className="w-3 h-3 rounded-full bg-green-500 inline-block border-2 border-white"></span>
+                        {card.name}{" "}
+                        <span className="w-3 h-3 rounded-full bg-green-500 inline-block border-2 border-white"></span>
                       </h3>
                       <div className="flex gap-2 mt-3">
-                        <div className="w-12 h-12 rounded-full bg-slate-900/50 backdrop-blur-md flex items-center justify-center text-white border border-white/20 hover:bg-red-500 hover:border-red-500 transition-colors cursor-pointer">✕</div>
+                        <div className="w-12 h-12 rounded-full bg-slate-900/50 backdrop-blur-md flex items-center justify-center text-white border border-white/20 hover:bg-red-500 hover:border-red-500 transition-colors cursor-pointer">
+                          ✕
+                        </div>
                         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 flex items-center justify-center text-white shadow-lg hover:scale-110 transition-transform cursor-pointer">
                           <FavoriteRoundedIcon fontSize="small" />
                         </div>
@@ -250,7 +350,6 @@ export default function LandingPage() {
                 </div>
               ))}
             </Grid>
-
           </Grid>
         </Container>
       </section>
@@ -263,40 +362,72 @@ export default function LandingPage() {
               Tại sao chọn <span className="text-pink-600">Chúng Tôi?</span>
             </h2>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-              Chúng tôi không chỉ giúp bạn tìm người yêu, chúng tôi giúp bạn tìm thấy một nửa hoàn hảo của mình thông qua công nghệ.
+              Chúng tôi không chỉ giúp bạn tìm người yêu, chúng tôi giúp bạn tìm
+              thấy một nửa hoàn hảo của mình thông qua công nghệ.
             </p>
           </div>
 
-          <Grid container spacing={4}>
-            {FEATURES.map((feature, idx) => (
-              <Grid size={{ xs: 12, md: 4 }} key={idx}>
-                <Paper
-                  elevation={0}
-                  className="feature-card h-full p-10 rounded-[48px] 
-                  bg-slate-900 dark:bg-white/5 backdrop-blur-2xl 
-                  border border-slate-800 dark:border-white/10 
-                  shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] dark:shadow-none
-                  hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.3)] dark:hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.1)]
-                  hover:-translate-y-3 transition-all duration-500 group relative overflow-hidden"
-                >
-                  {/* Hover Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <Grid container spacing={4} className="features-container">
+  {FEATURES.map((feature, idx) => (
+    <Grid 
+      key={idx}
+      size={{ xs: 12, md: 4 }} 
+      sx={{ display: 'flex' }}
+    >
+      <div
+        className={`
+          feature-card w-full p-10 rounded-[48px] relative overflow-hidden cursor-pointer transition-all duration-500 border group
+          /* Light Mode: Nền xám cực nhẹ, viền rõ hơn */
+          bg-slate-100/70 border-slate-200 
+          /* Dark Mode: Nền tối trong suốt, viền mờ */
+          dark:bg-white/5 dark:border-white/10 dark:backdrop-blur-xl
+        `}
+        style={{ 
+          transformStyle: "preserve-3d",
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: '320px'
+        }}
+      >
+        {/* Lớp phản quang - Tăng độ đậm ở Light Mode để thấy rõ hơn */}
+        <div 
+          className="glow-overlay absolute w-[300px] h-[300px] rounded-full blur-[80px] pointer-events-none opacity-0" 
+          style={{ 
+            background: `radial-gradient(circle, ${feature.color}66 0%, transparent 70%)`,
+            zIndex: 0 
+          }} 
+        />
 
-                  <div className="relative z-10">
-                    <div className="w-20 h-20 rounded-[24px] bg-white/10 dark:bg-white/10 text-pink-400 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 border border-white/10">
-                      {feature.icon}
-                    </div>
+        <div className="relative z-10">
+          {/* Icon Box - Tăng độ đậm nền ở Light Mode */}
+          <div 
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6
+            border-slate-200 dark:border-white/10"
+            style={{ 
+              color: feature.color, 
+              // Dùng opacity cao hơn một chút cho Light mode
+              backgroundColor: `${feature.color}25` 
+            }}
+          >
+            {feature.icon}
+          </div>
 
-                    {/* Text chuyển sang màu trắng/sáng để nổi trên nền đậm */}
-                    <h3 className="text-2xl font-bold mb-4 text-white">{feature.title}</h3>
-                    <p className="text-slate-400 leading-relaxed font-medium text-lg">
-                      {feature.desc}
-                    </p>
-                  </div>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
+          {/* Tiêu đề - Chuyển màu linh hoạt */}
+          <h3 className="text-2xl font-black mb-4 transition-colors
+            text-slate-900 dark:text-white group-hover:text-pink-500">
+            {feature.title}
+          </h3>
+
+          {/* Mô tả - Chuyển màu linh hoạt */}
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-lg">
+            {feature.desc}
+          </p>
+        </div>
+      </div>
+    </Grid>
+  ))}
+</Grid>
         </Container>
       </section>
 
@@ -307,28 +438,46 @@ export default function LandingPage() {
         <Container className="relative z-10">
           <Grid container spacing={4} textAlign="center">
             <Grid size={{ xs: 6, md: 3 }}>
-              <div className="text-5xl md:text-6xl font-black mb-2 text-pink-500 stat-number">2M+</div>
-              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">Người dùng</div>
+              <div className="text-5xl md:text-6xl font-black mb-2 text-pink-500 stat-number">
+                2M+
+              </div>
+              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">
+                Người dùng
+              </div>
             </Grid>
             <Grid size={{ xs: 6, md: 3 }}>
-              <div className="text-5xl md:text-6xl font-black mb-2 text-violet-500 stat-number">500k</div>
-              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">Matches</div>
+              <div className="text-5xl md:text-6xl font-black mb-2 text-violet-500 stat-number">
+                500K
+              </div>
+              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">
+                Matches
+              </div>
             </Grid>
             <Grid size={{ xs: 6, md: 3 }}>
-              <div className="text-5xl md:text-6xl font-black mb-2 text-blue-500 stat-number">150+</div>
-              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">Quốc gia</div>
+              <div className="text-5xl md:text-6xl font-black mb-2 text-blue-500 stat-number">
+                150+
+              </div>
+              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">
+                Quốc gia
+              </div>
             </Grid>
             <Grid size={{ xs: 6, md: 3 }}>
-              <div className="text-5xl md:text-6xl font-black mb-2 text-yellow-500 stat-number">4.8</div>
-              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">Rating</div>
+              <div className="text-5xl md:text-6xl font-black mb-2 text-yellow-500 stat-number">
+                4.8
+              </div>
+              <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">
+                Rating
+              </div>
             </Grid>
           </Grid>
         </Container>
       </section>
 
       {/* ================= EXPLOSIVE FINAL CTA ================= */}
-      <section ref={footerRef} className="py-40 relative flex items-center justify-center overflow-hidden bg-black text-white">
-
+      <section
+        ref={footerRef}
+        className="py-40 relative flex items-center justify-center overflow-hidden bg-black text-white"
+      >
         {/* 1. Animated Moving Gradient Background (Màu Tối) */}
         <div className="absolute inset-0 bg-[conic-gradient(at_bottom_left,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900 opacity-80" />
 
@@ -345,10 +494,15 @@ export default function LandingPage() {
           </div>
         ))}
 
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 10, textAlign: 'center' }}>
+        <Container
+          maxWidth="md"
+          sx={{ position: "relative", zIndex: 10, textAlign: "center" }}
+        >
           {/* Badge nhỏ */}
           <div className="inline-block px-6 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md mb-8">
-            <span className="text-pink-300 font-bold tracking-widest uppercase text-sm">Cơ hội đang chờ</span>
+            <span className="text-pink-300 font-bold tracking-widest uppercase text-sm">
+              Cơ hội đang chờ
+            </span>
           </div>
 
           <Typography
@@ -356,26 +510,27 @@ export default function LandingPage() {
             sx={{
               fontWeight: 900,
               mb: 4,
-              fontSize: { xs: '3.5rem', md: '5.5rem' },
+              fontSize: { xs: "3.5rem", md: "5.5rem" },
               lineHeight: 1,
-              letterSpacing: '-0.03em',
-              textShadow: '0 10px 30px rgba(0,0,0,0.5)',
-              fontFamily: `${VIETNAMESE_FONT} !important`
+              letterSpacing: "-0.03em",
+              textShadow: "0 10px 30px rgba(0,0,0,0.5)",
+              fontFamily: `${VIETNAMESE_FONT} !important`,
             }}
-
           >
-            Đừng để cô đơn<br />
+            Đừng để cô đơn
+            <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-yellow-500">
               thêm một ngày.
             </span>
           </Typography>
 
           <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto font-medium">
-            Hàng ngàn người độc thân đang chờ đợi một kết nối từ bạn. Tham gia cộng đồng hẹn hò chất lượng nhất ngay hôm nay.
+            Hàng ngàn người độc thân đang chờ đợi một kết nối từ bạn. Tham gia
+            cộng đồng hẹn hò chất lượng nhất ngay hôm nay.
           </p>
 
           {/* Nút bấm Đen Trắng tương phản cao */}
-          <Link href={user ? '/matches' : '/auth'}>
+          <Link href={user ? "/matches" : "/auth"}>
             <button className="relative group overflow-hidden bg-white text-black font-black py-6 px-16 rounded-full text-2xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.7)]">
               <span className="relative z-10 group-hover:text-pink-600 transition-colors duration-300 flex items-center gap-2">
                 TẠO TÀI KHOẢN NGAY <ArrowForwardRoundedIcon />
@@ -392,7 +547,10 @@ export default function LandingPage() {
       </section>
 
       <footer className="py-8 text-center text-slate-500 text-sm bg-black border-t border-white/10">
-        <p>© {new Date().getFullYear()} TinderClone. Made with ❤️ by FrontEnd Team.</p>
+        <p>
+          © {new Date().getFullYear()} TinderClone. Made with ❤️ by FrontEnd
+          Team.
+        </p>
       </footer>
     </div>
   );
