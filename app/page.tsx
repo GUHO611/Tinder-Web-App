@@ -6,9 +6,8 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAuth } from "@/contexts/auth-context";
 
-// MUI Components
+// MUI Components - Sử dụng Grid2 cho MUI v6
 import { Box, Button, Container, Typography, Paper, Avatar, AvatarGroup } from "@mui/material";
-// FIX: Import Grid2 chính xác cho MUI v6
 import Grid from '@mui/material/Grid';
 
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
@@ -33,7 +32,10 @@ const FEATURES = [
   { icon: <AutoAwesomeRoundedIcon fontSize="large" />, title: "Vibe Check", desc: "Video call trực tiếp để cảm nhận 'tia lửa' trước khi hẹn hò." },
 ];
 
+
 const VIETNAMESE_FONT = '"Be Vietnam Pro", sans-serif';
+const CTA_PARTICLES = ['❤️', '✨', '🔥', '💖', '💘', '⚡'];
+
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -61,7 +63,7 @@ export default function LandingPage() {
           ease: "back.out(1.2)",
         }, "-=0.8");
 
-      // 2. HERO INTERACTION
+      // 2. HERO INTERACTION (Parallax)
       const cards = document.querySelectorAll(".hero-card");
       const heroSection = document.querySelector(".hero-section");
 
@@ -81,7 +83,7 @@ export default function LandingPage() {
         heroSection.addEventListener("mousemove", handleMouseMove as EventListener);
       }
 
-      // 3. FEATURES
+      // 3. FEATURES SCROLL TRIGGER
       gsap.from(".feature-card", {
         scrollTrigger: {
           trigger: ".features-section",
@@ -94,7 +96,7 @@ export default function LandingPage() {
         stagger: 0.2,
       });
 
-      // 4. STATS
+      // 4. STATS COUNTER
       gsap.from(".stat-number", {
         scrollTrigger: {
           trigger: ".stats-section",
@@ -107,22 +109,39 @@ export default function LandingPage() {
         stagger: 0.2,
       });
 
-      // 5. EXPLOSIVE FOOTER
+      // 5. EXPLOSIVE FOOTER PARTICLES (FIXED LOGIC)
+      // Thay vì dùng State, ta dùng GSAP để set random positions ngay khi mount
       const particles = gsap.utils.toArray(".footer-particle");
       particles.forEach((p) => {
-        gsap.to(p as HTMLElement, {
-          y: "-=400",
-          x: "random(-100, 100)",
-          rotation: "random(-360, 360)",
+        // Set vị trí ban đầu ngẫu nhiên
+        gsap.set(p as HTMLElement, {
+          x: gsap.utils.random(-100, 100),
+          left: gsap.utils.random(0, 100) + "%", // Random vị trí ngang
+          scale: gsap.utils.random(0.5, 1.5),
+          rotation: gsap.utils.random(-360, 360),
           opacity: 0,
-          scale: "random(0.5, 1.5)",
+          bottom: -50 // Bắt đầu từ dưới đáy
+        });
+
+        // Tạo animation bay lên
+        gsap.to(p as HTMLElement, {
+          y: "-=500", // Bay lên cao 500px
+          x: "+=random(-50, 50)", // Lắc lư nhẹ sang trái phải
+          rotation: "+=random(-180, 180)",
+          opacity: 0, // Fade out khi bay lên
           duration: "random(3, 6)",
-          repeat: -1,
+          repeat: -1, // Lặp lại vô tận
           ease: "sine.inOut",
-          delay: "random(0, 5)"
+          delay: "random(0, 5)", // Delay ngẫu nhiên để không bay cùng lúc
+          keyframes: {
+            "0%": { opacity: 0 },
+            "20%": { opacity: 0.8 }, // Hiện rõ ở đoạn đầu
+            "100%": { opacity: 0 }
+          }
         });
       });
 
+      // Cleanup
       return () => {
         if (heroSection) {
           heroSection.removeEventListener("mousemove", handleMouseMove as EventListener);
@@ -149,7 +168,6 @@ export default function LandingPage() {
           <Grid container spacing={4} alignItems="center">
 
             {/* LEFT: TEXT CONTENT */}
-            {/* FIX: Thay 'item xs={...}' bằng 'size={{ xs: ..., md: ... }}' */}
             <Grid size={{ xs: 12, md: 6 }} className="text-center md:text-left z-20">
               <div className="hero-text-element inline-block px-4 py-1.5 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-pink-200 dark:border-white/10 mb-6">
                 <span className="text-pink-600 dark:text-pink-400 font-bold text-xs tracking-wider uppercase">✨ Dating App thế hệ mới</span>
@@ -202,7 +220,6 @@ export default function LandingPage() {
             </Grid>
 
             {/* RIGHT: CARD STACK ANIMATION */}
-            {/* FIX: Thay 'item' bằng 'size' */}
             <Grid size={{ xs: 12, md: 6 }} className="relative h-[500px] flex items-center justify-center">
               {HERO_CARDS.map((card, index) => (
                 <div
@@ -252,19 +269,30 @@ export default function LandingPage() {
 
           <Grid container spacing={4}>
             {FEATURES.map((feature, idx) => (
-              // FIX: Thay 'item' bằng 'size'
               <Grid size={{ xs: 12, md: 4 }} key={idx}>
                 <Paper
                   elevation={0}
-                  className="feature-card h-full p-8 rounded-[32px] bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 hover:border-pink-500/30 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-pink-500/10 group"
+                  className="feature-card h-full p-10 rounded-[48px] 
+                  bg-slate-900 dark:bg-white/5 backdrop-blur-2xl 
+                  border border-slate-800 dark:border-white/10 
+                  shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] dark:shadow-none
+                  hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.3)] dark:hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.1)]
+                  hover:-translate-y-3 transition-all duration-500 group relative overflow-hidden"
                 >
-                  <div className="w-16 h-16 rounded-2xl bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
-                    {feature.icon}
+                  {/* Hover Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                  <div className="relative z-10">
+                    <div className="w-20 h-20 rounded-[24px] bg-white/10 dark:bg-white/10 text-pink-400 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 border border-white/10">
+                      {feature.icon}
+                    </div>
+
+                    {/* Text chuyển sang màu trắng/sáng để nổi trên nền đậm */}
+                    <h3 className="text-2xl font-bold mb-4 text-white">{feature.title}</h3>
+                    <p className="text-slate-400 leading-relaxed font-medium text-lg">
+                      {feature.desc}
+                    </p>
                   </div>
-                  <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
-                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                    {feature.desc}
-                  </p>
                 </Paper>
               </Grid>
             ))}
@@ -278,7 +306,6 @@ export default function LandingPage() {
 
         <Container className="relative z-10">
           <Grid container spacing={4} textAlign="center">
-            {/* FIX: Thay 'item' bằng 'size' */}
             <Grid size={{ xs: 6, md: 3 }}>
               <div className="text-5xl md:text-6xl font-black mb-2 text-pink-500 stat-number">2M+</div>
               <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">Người dùng</div>
@@ -308,10 +335,13 @@ export default function LandingPage() {
         {/* 2. Noise Overlay để tạo chất liệu */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
 
-        {/* 3. Floating Particles */}
+        {/* 3. Floating Particles (HYDRATION SAFE: No Math.random in JSX) */}
         {[...Array(20)].map((_, i) => (
-          <div key={i} className="footer-particle absolute text-4xl opacity-50 select-none pointer-events-none" style={{ left: `${Math.random() * 100}%`, bottom: '-20%' }}>
-            {['❤️', '✨', '🔥', '💖', '💘', '⚡'][Math.floor(Math.random() * 6)]}
+          <div
+            key={i}
+            className="footer-particle absolute text-4xl opacity-0 select-none pointer-events-none"
+          >
+            {CTA_PARTICLES[i % CTA_PARTICLES.length]}
           </div>
         ))}
 
@@ -347,7 +377,9 @@ export default function LandingPage() {
           {/* Nút bấm Đen Trắng tương phản cao */}
           <Link href={user ? '/matches' : '/auth'}>
             <button className="relative group overflow-hidden bg-white text-black font-black py-6 px-16 rounded-full text-2xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.7)]">
-              <span className="relative z-10 group-hover:text-pink-600 transition-colors duration-300">TẠO TÀI KHOẢN NGAY</span>
+              <span className="relative z-10 group-hover:text-pink-600 transition-colors duration-300 flex items-center gap-2">
+                TẠO TÀI KHOẢN NGAY <ArrowForwardRoundedIcon />
+              </span>
               {/* Hiệu ứng trượt nền khi hover */}
               <div className="absolute inset-0 bg-black/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
             </button>
