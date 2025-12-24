@@ -47,7 +47,6 @@ export default function MatchesPage() {
   const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
   const NAVBAR_HEIGHT = 70;
 
-
   // --- Logic Load Data (GIỮ NGUYÊN) ---
   useEffect(() => {
     async function loadUsers() {
@@ -62,7 +61,6 @@ export default function MatchesPage() {
     }
     loadUsers();
   }, []);
-
 
   // --- GSAP Draggable (GIỮ NGUYÊN) ---
   useLayoutEffect(() => {
@@ -202,8 +200,21 @@ export default function MatchesPage() {
 
   if (loading) {
     return (
-      <Box sx={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#f0f0f0" }}>
-        <Skeleton variant="rectangular" width={isMobile ? "90vw" : 400} height={isMobile ? "60vh" : 500} sx={{ borderRadius: 4 }} />
+      <Box
+        sx={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#f0f0f0",
+        }}
+      >
+        <Skeleton
+          variant="rectangular"
+          width={isMobile ? "90vw" : 400}
+          height={isMobile ? "60vh" : 500}
+          sx={{ borderRadius: 4 }}
+        />
       </Box>
     );
   }
@@ -332,11 +343,43 @@ export default function MatchesPage() {
             >
               <MatchCard user={currentPotentialMatch} />
               {/* Overlays (Like/Nope) */}
-              <Box ref={likeOverlayRef} sx={{ position: "absolute", top: 40, left: 40, border: "4px solid #4CAF50", borderRadius: 2, padding: "4px 12px", transform: "rotate(-15deg)", opacity: 0, pointerEvents: "none", zIndex: 40 }}>
-                <Typography variant="h4" fontWeight={900} color="#4CAF50">LIKE</Typography>
+              <Box
+                ref={likeOverlayRef}
+                sx={{
+                  position: "absolute",
+                  top: 40,
+                  left: 40,
+                  border: "4px solid #4CAF50",
+                  borderRadius: 2,
+                  padding: "4px 12px",
+                  transform: "rotate(-15deg)",
+                  opacity: 0,
+                  pointerEvents: "none",
+                  zIndex: 40,
+                }}
+              >
+                <Typography variant="h4" fontWeight={900} color="#4CAF50">
+                  LIKE
+                </Typography>
               </Box>
-              <Box ref={nopeOverlayRef} sx={{ position: "absolute", top: 40, right: 40, border: "4px solid #F44336", borderRadius: 2, padding: "4px 12px", transform: "rotate(15deg)", opacity: 0, pointerEvents: "none", zIndex: 40 }}>
-                <Typography variant="h4" fontWeight={900} color="#F44336">NOPE</Typography>
+              <Box
+                ref={nopeOverlayRef}
+                sx={{
+                  position: "absolute",
+                  top: 40,
+                  right: 40,
+                  border: "4px solid #F44336",
+                  borderRadius: 2,
+                  padding: "4px 12px",
+                  transform: "rotate(15deg)",
+                  opacity: 0,
+                  pointerEvents: "none",
+                  zIndex: 40,
+                }}
+              >
+                <Typography variant="h4" fontWeight={900} color="#F44336">
+                  NOPE
+                </Typography>
               </Box>
             </Box>
           </Box>
@@ -362,34 +405,34 @@ export default function MatchesPage() {
         </Box>
       </Box>
 
-      {/* --- CỘT BẢNG XẾP HẠNG (Nằm dưới Match ở Mobile) --- */}
       <Box
-        sx={{
-          width: { xs: "100%", lg: 450, xl: 500 },
-          // Mobile: cao theo nội dung và cho phép cuộn trang, Desktop: 100% màn hình và cuộn nội bộ
-          height: {
-            lg: `calc(100vh  ${NAVBAR_HEIGHT}px)`,
-          },
-          flexShrink: 0,
-          order: { xs: 2, lg: 1 },
-          bgcolor: { lg: "rgba(255, 255, 255, 0.65)" },
-          backdropFilter: { lg: "blur(20px)" },
-          boxShadow: { lg: "10px 0 30px rgba(0,0,0,0.05)" },
-          borderRight: { lg: "1px solid rgba(255, 255, 255, 0.3)" },
-          // Chỉ hiện scroll nội bộ trên Desktop
-          overflowY: { lg: "auto" },
-          "&::-webkit-scrollbar": { display: "none" },
-          msOverflowStyle: "none",
-          scrollbarWidth: "none",
-        }}
-      >
-        <Box
-          sx={{ p: { xs: 2, lg: 3 }, pb: { xs: 14, lg: 6 } }}>
-          <Leaderboard />
-          {/* Padding dưới cùng để mobile không bị sát mép */}
-          {/* <Box sx={{ height: 50, display: { lg: "none" } }} /> */}
-        </Box>
-      </Box>
+  sx={{
+    width: { xs: "100%", lg: 550, xl: 600 },
+    height: { lg: `calc(100vh - ${NAVBAR_HEIGHT}px)` },
+    flexShrink: 0,
+    order: { xs: 2, lg: 1 },
+    bgcolor: { lg: "rgba(255, 255, 255, 0.65)" },
+    backdropFilter: { lg: "blur(20px)" },
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden", // Giữ nguyên hidden ở đây
+  }}
+>
+  <Box
+    sx={{
+      p: { xs: 2, lg: 4 },
+      flexGrow: 1,
+      display: "flex",
+      flexDirection: "column",
+      // --- SỬA ĐOẠN NÀY ---
+      overflow: "hidden", // Đổi từ "scroll" thành "hidden"
+      height: "100%",    // Đảm bảo chiếm hết chiều cao để Leaderboard bên trong làm việc
+      // --------------------
+    }}
+  >
+    <Leaderboard />
+  </Box>
+</Box>
 
       {showMatchNotification && matchedUser && (
         <MatchNotification
