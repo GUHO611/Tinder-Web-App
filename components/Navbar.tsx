@@ -6,6 +6,7 @@ import { useMessage } from "@/contexts/message-context";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { gsap } from "gsap";
+import { UserCircle } from "lucide-react"
 
 // --- 1. ĐỊNH NGHĨA LIST ICON & MENU ITEMS ---
 const NAV_ITEMS = [
@@ -319,18 +320,34 @@ export default function Navbar() {
             </div>
 
             {/* Mobile Hamburger Button */}
-            {user && (
-              <button
-                ref={hamburgerRef}
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:text-pink-500 transition-colors rounded-xl hover:bg-pink-50 dark:hover:bg-gray-800">
-                {isMobileMenuOpen ? (
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                ) : (
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                )}
-              </button>
-            )}
+            {/* Mobile Action Button (Hamburger hoặc Login Icon) */}
+            <div className="lg:hidden">
+              {user ? (
+                // 1. ĐÃ ĐĂNG NHẬP: Hiện nút Hamburger để mở Menu
+                <button
+                  ref={hamburgerRef}
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-pink-500 transition-colors rounded-xl hover:bg-pink-50 dark:hover:bg-gray-800"
+                >
+                  {isMobileMenuOpen ? (
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  ) : (
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                  )}
+                </button>
+              ) : (
+                // 2. CHƯA ĐĂNG NHẬP: Hiện Icon Đăng Nhập (Bấm vào chuyển trang Auth luôn)
+                <Link
+                  href="/auth"
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-pink-500 transition-colors rounded-xl hover:bg-pink-50 dark:hover:bg-gray-800 flex items-center justify-center"
+                >
+                  {/* <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h-7">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                  </svg> */}
+                  <UserCircle className="w-7 h-7" />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -371,9 +388,15 @@ export default function Navbar() {
             <Link
               href="/auth"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="block text-center py-4 mt-2 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
+              className="flex items-center justify-center gap-3 py-3.5 mt-2 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-transform group"
             >
-              Đăng nhập ngay
+              {/* Icon Đăng nhập */}
+              <div className="p-1 bg-white/20 rounded-lg backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                </svg>
+              </div>
+              <span>Đăng nhập ngay</span>
             </Link>
           )}
         </div>

@@ -6,21 +6,37 @@ import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 
 export default function MatchCard({ user }: { user: UserProfile }) {
+    // 1. GUARD CLAUSE: Tránh crash nếu user bị undefined (do lỗi logic cha)
+    if (!user) {
+        return <div className="w-full h-full bg-gray-200 rounded-3xl animate-pulse flex items-center justify-center text-gray-400">Loading...</div>;
+    }
+
+    const [hasError, setHasError] = useState(false);
+
     const photos = useMemo(() => {
         let list: string[] = [];
-        if (user.photos && user.photos.length > 0) {
-            list = user.photos;
-        } else if (user.avatar_url) {
+
+        if (user.photos && Array.isArray(user.photos) && user.photos.length > 0) {
+            list = user.photos.filter(p => p && typeof p === 'string' && p.trim() !== "");
+        }
+        if (list.length === 0 && user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.trim() !== "") {
             list = [user.avatar_url];
-        } else {
+        }
+        if (list.length === 0) {
             list = ["/default-avatar.png"];
         }
+
         return list;
     }, [user.photos, user.avatar_url]);
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
     const [expandBio, setExpandBio] = useState(false);
+
+    // Reset lỗi khi chuyển sang user khác hoặc đổi ảnh
+    useEffect(() => {
+        setHasError(false);
+    }, [user.id, currentIndex]);
 
     // Auto-slide logic
     useEffect(() => {
@@ -48,6 +64,10 @@ export default function MatchCard({ user }: { user: UserProfile }) {
         setExpandBio(!expandBio);
     };
 
+    // 3. XÁC ĐỊNH URL CUỐI CÙNG
+    // Nếu image component báo lỗi (onError) -> dùng ảnh mặc định ngay lập tức
+    const displaySrc = hasError ? "/default-avatar.png" : photos[currentIndex];
+
     return (
         <div
             className="relative w-full h-full max-w-sm mx-auto shadow-2xl rounded-3xl overflow-hidden bg-white dark:bg-gray-800 select-none group/card"
@@ -58,12 +78,14 @@ export default function MatchCard({ user }: { user: UserProfile }) {
 
                 {/* --- IMAGE --- */}
                 <Image
-                    key={currentIndex}
-                    src={photos[currentIndex]}
+                    key={`${user.id}-${currentIndex}`} // Key giúp reset image khi đổi ảnh
+                    src={displaySrc}
                     alt={`${user.full_name} photo`}
                     fill
                     className={`object-cover pointer-events-none transition-transform duration-700 ease-out ${isHovered ? 'scale-105' : 'scale-100'}`}
                     priority={currentIndex === 0}
+                    onError={() => setHasError(true)} // BẮT LỖI ẢNH TẠI ĐÂY
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Thêm sizes để tối ưu
                 />
 
                 {/* Gradient Overlay */}
@@ -108,8 +130,6 @@ export default function MatchCard({ user }: { user: UserProfile }) {
                 )}
 
                 {/* --- INFO SECTION --- */}
-                {/* Dùng pointer-events-none cho container cha để click xuyên qua vùng trống */}
-                {/* Chỉ bật pointer-events-auto khi Bio mở rộng hoặc cho các phần tử con */}
                 <div
                     className={`absolute bottom-0 left-0 right-0 p-5 text-white z-40 transition-all duration-500 ease-in-out flex flex-col justify-end
                     ${expandBio ? 'h-[85%] overflow-y-auto custom-scrollbar pointer-events-auto' : 'h-auto pointer-events-none'}`}
@@ -128,8 +148,6 @@ export default function MatchCard({ user }: { user: UserProfile }) {
                                     </span>
                                 </div>
                             </div>
-
-                            {/* ĐÃ BỎ NÚT 3 CHẤM Ở ĐÂY */}
                         </div>
 
                         {/* LOCATION */}
@@ -151,7 +169,6 @@ export default function MatchCard({ user }: { user: UserProfile }) {
                             >
                                 <div className="flex justify-between items-center mb-1">
                                     <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Giới thiệu</h4>
-                                    {/* Icon chỉ dẫn nhỏ: Mở ra / Thu vào */}
                                     <span className="text-white/50">
                                         {expandBio ? (
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" /></svg>

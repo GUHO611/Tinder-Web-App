@@ -285,3 +285,27 @@ export async function uploadProfilePhoto(file: File, bucketName: "avatars" | "pr
 
     return { success: true, url: publicUrl };
 }
+
+export async function updateUserPreferences(newPreferences: Record<string, any>) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: "User not authenticated" };
+
+    // Chỉ update cột preferences, giữ nguyên các cột khác
+    const { error } = await supabase
+        .from("users")
+        .update({
+            preferences: newPreferences,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", user.id);
+
+    if (error) {
+        console.error("Update Preferences Error:", error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true };
+}

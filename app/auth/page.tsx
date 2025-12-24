@@ -13,10 +13,7 @@ import {
     Box,
     Button,
     Checkbox,
-    Container,
     FormControlLabel,
-    Grid,
-    IconButton,
     InputAdornment,
     Paper,
     TextField,
@@ -31,7 +28,6 @@ import {
 import { styled } from "@mui/material/styles";
 
 // --- Custom Icons ---
-// Chuyển đổi SVG icons cũ sang component React nhận props style
 const SvgIconWrapper = ({ children, color = "currentColor" }: { children: React.ReactNode, color?: string }) => (
     <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
         {children}
@@ -65,14 +61,14 @@ const Icons = {
 
 // 1. Page Background
 const PageWrapper = styled(Box)({
-    height: '100vh',        // Bắt buộc bằng màn hình
+    height: '90vh',
     width: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #FF99AC 100%)',
     position: 'relative',
-    overflow: 'hidden',     // Cắt bỏ mọi thứ tràn ra ngoài -> Không bao giờ có scroll tổng
+    overflow: 'hidden',
 });
 
 // 2. Glassmorphism Card Container
@@ -81,17 +77,16 @@ const AuthCard = styled(Paper)(({ theme }) => ({
     borderRadius: '32px',
     overflow: 'hidden',
     boxShadow: '0 20px 80px rgba(233, 64, 134, 0.25)',
-    maxWidth: '900px',      // Giảm độ rộng tổng thể một chút cho gọn
+    maxWidth: '900px',
     width: '90%',
-    maxHeight: '85vh',      // Giới hạn chiều cao card chỉ chiếm 85% màn hình
-    overflowY: 'auto',      // Nếu nội dung dài quá thì scroll TRONG CARD, không scroll trang
+    maxHeight: '85vh',
+    overflowY: 'auto',
     position: 'relative',
     zIndex: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
     backdropFilter: 'blur(40px)',
     border: '1px solid rgba(255, 255, 255, 0.6)',
 
-    // Ẩn thanh cuộn mặc định cho đẹp
     '&::-webkit-scrollbar': {
         width: '0px',
         background: 'transparent',
@@ -106,13 +101,13 @@ const AuthCard = styled(Paper)(({ theme }) => ({
 
 // 3. Left Panel (Illustration)
 const LeftPanel = styled(Box)({
-    flex: 0.8,              // Giảm tỷ lệ chiếm chỗ (trước là 1, giờ 0.8 để nhường chỗ cho form)
+    flex: 0.8,
     background: 'linear-gradient(135deg, rgba(233, 64, 134, 0.8) 0%, rgba(255, 126, 179, 0.8) 100%)',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '32px',        // Giảm padding (trước là 40px)
+    padding: '32px',
     color: 'white',
     position: 'relative',
     overflow: 'hidden',
@@ -125,7 +120,7 @@ const RightPanel = styled(Box)(({ theme }) => ({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)', // Semi-transparent white
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     [theme.breakpoints.down('sm')]: {
         padding: '32px 24px',
     },
@@ -262,7 +257,6 @@ function AuthPage() {
     // === ANIMATIONS (GSAP) ===
     useLayoutEffect(() => {
         const ctx = gsap.context(() => {
-            // 1. Page Load: Card Slide Up + Fade
             gsap.from(cardRef.current, {
                 y: 100,
                 opacity: 0,
@@ -271,7 +265,6 @@ function AuthPage() {
                 delay: 0.2
             });
 
-            // 2. Illustration: Scale + Blur Out effect on entrance
             if (illustrationRef.current) {
                 gsap.from(illustrationRef.current, {
                     scale: 1.1,
@@ -284,11 +277,9 @@ function AuthPage() {
         return () => ctx.revert();
     }, []);
 
-    // 3. View Switch Animation
     useEffect(() => {
         const ctx = gsap.context(() => {
             if (formRef.current) {
-                // Animate form elements staggering in
                 gsap.fromTo(formRef.current.children,
                     { y: 20, opacity: 0 },
                     { y: 0, opacity: 1, stagger: 0.05, duration: 0.4, ease: "back.out(1.7)" }
@@ -298,7 +289,7 @@ function AuthPage() {
         return () => ctx.revert();
     }, [view]);
 
-    // === HANDLERS (Giữ nguyên) ===
+    // === HANDLERS ===
     const switchView = (newView: 'login' | 'signup') => {
         setView(newView);
     };
@@ -343,14 +334,24 @@ function AuthPage() {
                 if (!email) throw new Error("Email bị trống. Vui lòng nhập lại email.");
                 const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
                 if (error) throw error;
-                await markUserAsVerified();
-                const profile = await getCurrentUserProfile();
-                router.refresh();
-                if (profile && !profile.is_profile_completed) {
-                    router.push("/profile/edit");
-                } else {
+
+                // FIX: Sử dụng try-catch riêng cho việc cập nhật profile server
+                // Nếu verifyOtp thành công nghĩa là đã login được
+                try {
+                    await markUserAsVerified();
+                    router.refresh();
+                    const profile = await getCurrentUserProfile();
+                    if (profile && !profile.is_profile_completed) {
+                        router.push("/profile/edit");
+                    } else {
+                        router.push("/");
+                    }
+                } catch (profileError) {
+                    console.error("Profile sync error (ignored):", profileError);
+                    // Dù lỗi server action, vẫn redirect về Home vì đã login thành công
                     router.push("/");
                 }
+
             } else if (view === 'login') {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) {
@@ -363,15 +364,31 @@ function AuthPage() {
                     }
                     throw error;
                 }
+
+                // FIX: Đăng nhập thành công, cố gắng lấy profile nhưng không throw lỗi nếu thất bại
                 router.refresh();
-                const profile = await getCurrentUserProfile();
-                if (profile && !profile.is_profile_completed) {
-                    router.push("/profile/edit");
-                } else {
+                try {
+                    const profile = await getCurrentUserProfile();
+                    if (profile && !profile.is_profile_completed) {
+                        router.push("/profile/edit");
+                    } else {
+                        router.push("/");
+                    }
+                } catch (profileError) {
+                    console.error("Profile sync error (ignored):", profileError);
+                    // Dù lỗi server action, vẫn redirect về Home vì đã login thành công
                     router.push("/");
                 }
             }
         } catch (err: unknown) {
+            // FIX: Kiểm tra lần cuối xem session có tồn tại không trước khi báo lỗi
+            // Nếu session tồn tại, nghĩa là lỗi chỉ là do server action sync chậm -> bỏ qua và redirect
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                router.push("/");
+                return;
+            }
+
             let errorMessage = "Đã xảy ra lỗi";
             if (err instanceof Error) errorMessage = err.message;
             else if (typeof err === "string") errorMessage = err;
@@ -406,7 +423,7 @@ function AuthPage() {
                                 sx={{
                                     width: '100%',
                                     maxWidth: 240,
-                                    height: 'auto',
+                                    height: '90%',
                                     mb: 3,
                                     borderRadius: '24px',
                                     overflow: 'hidden',
@@ -414,7 +431,7 @@ function AuthPage() {
                                 }}
                             >
                                 <img
-                                    src="/rom.svg"
+                                    src="/romantic.jpg"
                                     alt="Romantic Couple"
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={(e) => e.currentTarget.style.display = 'none'}
@@ -423,7 +440,7 @@ function AuthPage() {
                             <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, mb: 1 }}>
                                 Find Your Missing Piece
                             </Typography>
-                            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            <Typography variant="body1" sx={{ opacity: 0.9 }}>
                                 Kết nối trái tim, chia sẻ yêu thương
                             </Typography>
                         </Box>
