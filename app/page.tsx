@@ -6,19 +6,21 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAuth } from "@/contexts/auth-context";
 
-// MUI Components - LƯU Ý: Import Grid2 cho MUI v6
+// MUI Components
 import { Box, Button, Container, Typography, Paper, Avatar, AvatarGroup } from "@mui/material";
-import Grid from '@mui/material/Grid'; // Import Grid2
+// FIX: Import Grid2 chính xác cho MUI v6
+import Grid from '@mui/material/Grid';
 
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 
 // Đăng ký Plugin
 gsap.registerPlugin(ScrollTrigger);
 
-// --- DỮ LIỆU MẪU (Mock Data) ---
+// --- DỮ LIỆU MẪU ---
 const HERO_CARDS = [
   { id: 1, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&q=80", name: "Jessica, 24", color: "#ec4899" },
   { id: 2, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80", name: "Sarah, 22", color: "#8b5cf6" },
@@ -34,6 +36,7 @@ const FEATURES = [
 export default function LandingPage() {
   const { user } = useAuth();
   const mainRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
 
   // --- GSAP ANIMATION ---
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function LandingPage() {
           ease: "back.out(1.2)",
         }, "-=0.8");
 
-      // 2. HERO INTERACTION: Fix type 'any' -> 'MouseEvent'
+      // 2. HERO INTERACTION
       const cards = document.querySelectorAll(".hero-card");
       const heroSection = document.querySelector(".hero-section");
 
@@ -73,7 +76,6 @@ export default function LandingPage() {
       };
 
       if (heroSection) {
-        // Ép kiểu EventListener để TS hiểu đây là MouseEvent
         heroSection.addEventListener("mousemove", handleMouseMove as EventListener);
       }
 
@@ -103,7 +105,22 @@ export default function LandingPage() {
         stagger: 0.2,
       });
 
-      // Cleanup event listener
+      // 5. EXPLOSIVE FOOTER
+      const particles = gsap.utils.toArray(".footer-particle");
+      particles.forEach((p) => {
+        gsap.to(p as HTMLElement, {
+          y: "-=400",
+          x: "random(-100, 100)",
+          rotation: "random(-360, 360)",
+          opacity: 0,
+          scale: "random(0.5, 1.5)",
+          duration: "random(3, 6)",
+          repeat: -1,
+          ease: "sine.inOut",
+          delay: "random(0, 5)"
+        });
+      });
+
       return () => {
         if (heroSection) {
           heroSection.removeEventListener("mousemove", handleMouseMove as EventListener);
@@ -127,13 +144,10 @@ export default function LandingPage() {
       {/* ================= HERO SECTION ================= */}
       <section className="hero-section relative z-10 min-h-screen flex items-center justify-center pt-20 pb-10 px-4">
         <Container maxWidth="xl">
-          {/* FIX: Grid container không cần prop 'container' trong v2 (nhưng giữ cũng không sao nếu import Grid cũ). 
-            Quan trọng là Grid con KHÔNG ĐƯỢC CÓ 'item'.
-          */}
           <Grid container spacing={4} alignItems="center">
 
             {/* LEFT: TEXT CONTENT */}
-            {/* FIX: Thay <Grid item xs={12}> thành <Grid size={{ xs: 12, md: 6 }}> hoặc props trực tiếp */}
+            {/* FIX: Thay 'item xs={...}' bằng 'size={{ xs: ..., md: ... }}' */}
             <Grid size={{ xs: 12, md: 6 }} className="text-center md:text-left z-20">
               <div className="hero-text-element inline-block px-4 py-1.5 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-pink-200 dark:border-white/10 mb-6">
                 <span className="text-pink-600 dark:text-pink-400 font-bold text-xs tracking-wider uppercase">✨ Dating App thế hệ mới</span>
@@ -171,7 +185,6 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* Mini Social Proof */}
               <div className="hero-text-element mt-12 flex items-center justify-center md:justify-start gap-4">
                 <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 40, height: 40, borderColor: 'white' } }}>
                   <Avatar alt="Remy Sharp" src="https://mui.com/static/images/avatar/1.jpg" />
@@ -187,7 +200,7 @@ export default function LandingPage() {
             </Grid>
 
             {/* RIGHT: CARD STACK ANIMATION */}
-            {/* FIX: Bỏ prop 'item' */}
+            {/* FIX: Thay 'item' bằng 'size' */}
             <Grid size={{ xs: 12, md: 6 }} className="relative h-[500px] flex items-center justify-center">
               {HERO_CARDS.map((card, index) => (
                 <div
@@ -237,7 +250,7 @@ export default function LandingPage() {
 
           <Grid container spacing={4}>
             {FEATURES.map((feature, idx) => (
-              // FIX: Bỏ 'item', dùng size props
+              // FIX: Thay 'item' bằng 'size'
               <Grid size={{ xs: 12, md: 4 }} key={idx}>
                 <Paper
                   elevation={0}
@@ -263,7 +276,7 @@ export default function LandingPage() {
 
         <Container className="relative z-10">
           <Grid container spacing={4} textAlign="center">
-            {/* FIX: Bỏ item, dùng size */}
+            {/* FIX: Thay 'item' bằng 'size' */}
             <Grid size={{ xs: 6, md: 3 }}>
               <div className="text-5xl md:text-6xl font-black mb-2 text-pink-500 stat-number">2M+</div>
               <div className="text-sm md:text-base font-bold uppercase tracking-widest text-slate-400">Người dùng</div>
@@ -284,47 +297,65 @@ export default function LandingPage() {
         </Container>
       </section>
 
-      {/* ================= FINAL CTA ================= */}
-      <section className="py-32 relative flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-rose-500 to-violet-600 opacity-95" />
+      {/* ================= EXPLOSIVE FINAL CTA ================= */}
+      <section ref={footerRef} className="py-40 relative flex items-center justify-center overflow-hidden bg-black text-white">
 
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+        {/* 1. Animated Moving Gradient Background (Màu Tối) */}
+        <div className="absolute inset-0 bg-[conic-gradient(at_bottom_left,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900 opacity-80" />
+
+        {/* 2. Noise Overlay để tạo chất liệu */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+
+        {/* 3. Floating Particles */}
+        {[...Array(20)].map((_, i) => (
+          <div key={i} className="footer-particle absolute text-4xl opacity-50 select-none pointer-events-none" style={{ left: `${Math.random() * 100}%`, bottom: '-20%' }}>
+            {['❤️', '✨', '🔥', '💖', '💘', '⚡'][Math.floor(Math.random() * 6)]}
+          </div>
+        ))}
+
+        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 10, textAlign: 'center' }}>
+          {/* Badge nhỏ */}
+          <div className="inline-block px-6 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md mb-8">
+            <span className="text-pink-300 font-bold tracking-widest uppercase text-sm">Cơ hội đang chờ</span>
+          </div>
+
           <Typography
             variant="h1"
             sx={{
-              color: 'white',
               fontWeight: 900,
-              mb: 3,
-              fontSize: { xs: '2.8rem', md: '4rem' },
-              lineHeight: 1.1,
+              mb: 4,
+              fontSize: { xs: '3.5rem', md: '5.5rem' },
+              lineHeight: 1,
+              letterSpacing: '-0.03em',
+              textShadow: '0 10px 30px rgba(0,0,0,0.5)'
             }}
           >
-            Sẵn sàng tìm nửa kia?
+            Đừng để cô đơn<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-yellow-500">
+              thêm một ngày.
+            </span>
           </Typography>
 
-          <Typography
-            sx={{
-              color: 'rgba(255,255,255,0.85)',
-              fontSize: '1.25rem',
-              maxWidth: 720,
-              mx: 'auto',
-              mb: 6,
-            }}
-          >
-            Đừng để cơ hội vụt mất. Tham gia cộng đồng hẹn hò chất lượng nhất ngay hôm nay.
-          </Typography>
+          <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto font-medium">
+            Hàng ngàn người độc thân đang chờ đợi một kết nối từ bạn. Tham gia cộng đồng hẹn hò chất lượng nhất ngay hôm nay.
+          </p>
 
+          {/* Nút bấm Đen Trắng tương phản cao */}
           <Link href={user ? '/matches' : '/auth'}>
-            <button className="relative group overflow-hidden bg-white text-rose-600 font-bold py-5 px-14 rounded-full text-xl shadow-2xl transition-all hover:scale-105">
-              <span className="relative z-10">Bắt đầu ngay</span>
-              <div className="absolute inset-0 bg-rose-50 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+            <button className="relative group overflow-hidden bg-white text-black font-black py-6 px-16 rounded-full text-2xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.7)]">
+              <span className="relative z-10 group-hover:text-pink-600 transition-colors duration-300">TẠO TÀI KHOẢN NGAY</span>
+              {/* Hiệu ứng trượt nền khi hover */}
+              <div className="absolute inset-0 bg-black/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
             </button>
           </Link>
+
+          <p className="mt-6 text-sm text-slate-500">
+            *Miễn phí đăng ký. Không cần thẻ tín dụng.
+          </p>
         </Container>
       </section>
 
-
-      <footer className="py-8 text-center text-slate-400 text-sm bg-slate-50 dark:bg-black border-t border-slate-200 dark:border-white/5">
+      <footer className="py-8 text-center text-slate-500 text-sm bg-black border-t border-white/10">
         <p>© 2024 TinderClone. Made with ❤️ by Phung Quoc Thinh.</p>
       </footer>
     </div>
