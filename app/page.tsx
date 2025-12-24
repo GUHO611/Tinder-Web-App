@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -37,6 +37,7 @@ export default function LandingPage() {
   const { user } = useAuth();
   const mainRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+  const [particles, setParticles] = useState<{ id: number; left: number; emoji: string }[]>([]);
 
   // --- GSAP ANIMATION ---
   useEffect(() => {
@@ -130,6 +131,16 @@ export default function LandingPage() {
     }, mainRef);
 
     return () => ctx.revert();
+  }, []);
+
+  // Generate particles on client side to avoid hydration mismatch
+  useEffect(() => {
+    const generatedParticles = [...Array(20)].map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      emoji: ['❤️', '✨', '🔥', '💖', '💘', '⚡'][Math.floor(Math.random() * 6)]
+    }));
+    setParticles(generatedParticles);
   }, []);
 
   return (
@@ -307,9 +318,9 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
 
         {/* 3. Floating Particles */}
-        {[...Array(20)].map((_, i) => (
-          <div key={i} className="footer-particle absolute text-4xl opacity-50 select-none pointer-events-none" style={{ left: `${Math.random() * 100}%`, bottom: '-20%' }}>
-            {['❤️', '✨', '🔥', '💖', '💘', '⚡'][Math.floor(Math.random() * 6)]}
+        {particles.map((particle) => (
+          <div key={particle.id} className="footer-particle absolute text-4xl opacity-50 select-none pointer-events-none" style={{ left: `${particle.left}%`, bottom: '-20%' }}>
+            {particle.emoji}
           </div>
         ))}
 

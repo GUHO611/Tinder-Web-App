@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useMemo } from "react";
 import {
   Call,
   CallControls,
@@ -13,6 +13,8 @@ import {
 
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import { getStreamVideoToken } from "@/lib/actions/stream";
+
+// Use useMemo to prevent infinite re-renders of PaginatedGridLayout
 
 interface VideoCallProps {
   callId: string;
@@ -36,6 +38,9 @@ export default function VideoCall({
   const [showCallEnded, setShowCallEnded] = useState(false);
   const [userInitiatedLeave, setUserInitiatedLeave] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
+
+  // Memoize PaginatedGridLayout to prevent infinite re-renders
+  const gridLayout = useMemo(() => <PaginatedGridLayout />, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -138,11 +143,11 @@ export default function VideoCall({
     return () => {
       isMounted = false;
       if (call) {
-        // Cleanup subscriptions
-        if ((call as any)._callStateUnsubscribe) {
+        // Cleanup subscriptions with type checking
+        if ((call as any)._callStateUnsubscribe && typeof (call as any)._callStateUnsubscribe === 'function') {
           (call as any)._callStateUnsubscribe();
         }
-        if ((call as any)._participantUnsubscribe) {
+        if ((call as any)._participantUnsubscribe && typeof (call as any)._participantUnsubscribe === 'function') {
           (call as any)._participantUnsubscribe();
         }
         call.leave();
@@ -198,7 +203,7 @@ export default function VideoCall({
         <StreamCall call={call}>
           <StreamTheme>
             {/* Sử dụng PaginatedGridLayout để chia đều màn hình cho cả 2 người tham gia */}
-            <PaginatedGridLayout />
+            {gridLayout}
 
             <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
               <CallControls onLeave={onCallEnd} />
@@ -246,6 +251,12 @@ export default function VideoCall({
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Người kia đã rời khỏi cuộc gọi
             </p>
+            <button
+              onClick={onCallEnd}
+              className="bg-gray-700 text-white font-semibold py-2 px-6 rounded-full hover:bg-gray-600 transition-all"
+            >
+              Trở lại
+            </button>
           </div>
         </div>
       )}
