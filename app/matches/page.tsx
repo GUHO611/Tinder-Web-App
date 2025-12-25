@@ -126,7 +126,7 @@ export default function MatchesPage() {
     setSavingSettings(true);
     try {
       // Gọi Server Action cập nhật profile
-      await updateUserPreferences(preferences);
+      await updateUserPreferences(preferences as unknown as Record<string, unknown>);
 
       setShowSettings(false);
       // Gọi lại hàm loadUsers để lấy danh sách mới theo filter mới
@@ -437,8 +437,8 @@ export default function MatchesPage() {
                             value === "male"
                               ? "Nam"
                               : value === "female"
-                              ? "Nữ"
-                              : "Khác"
+                                ? "Nữ"
+                                : "Khác"
                           }
                         />
                       ))}

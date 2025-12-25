@@ -365,20 +365,8 @@ function AuthPage() {
                     throw error;
                 }
 
-                // FIX: Đăng nhập thành công, cố gắng lấy profile nhưng không throw lỗi nếu thất bại
-                router.refresh();
-                try {
-                    const profile = await getCurrentUserProfile();
-                    if (profile && !profile.is_profile_completed) {
-                        router.push("/profile/edit");
-                    } else {
-                        router.push("/");
-                    }
-                } catch (profileError) {
-                    console.error("Profile sync error (ignored):", profileError);
-                    // Dù lỗi server action, vẫn redirect về Home vì đã login thành công
-                    router.push("/");
-                }
+                router.refresh(); // Làm mới server components (để cập nhật header, auth state)
+                router.push("/");
             }
         } catch (err: unknown) {
             // FIX: Kiểm tra lần cuối xem session có tồn tại không trước khi báo lỗi

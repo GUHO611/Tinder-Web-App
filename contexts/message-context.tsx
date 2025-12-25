@@ -1,5 +1,6 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from "react";
 import { getGlobalStreamClient } from "@/lib/stream-chat-client";
 import { ChannelFilters, ChannelOptions, ChannelSort, Event as StreamEvent, StreamChat, Channel } from "stream-chat";
@@ -219,26 +220,62 @@ export function MessageProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Reset thời gian fetch để đảm bảo lần đầu luôn chạy
     lastFetchTimeRef.current = 0;
     refreshState();
 
-    let client: StreamChat | null = null;
+    // --- PHẦN MỚI: LẮNG NGHE SUPABASE MATCHES ---
+    const supabase = createClient();
+    const realtimeChannel = supabase.channel('realtime-matches-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT', // Chỉ cần nghe khi có dòng mới (Match mới)
+          schema: 'public',
+          table: 'matches',
+          filter: `user1_id=eq.${userId}`, // Trường hợp mình là user1
+        },
+        () => {
+          console.log("🔔 Có Match mới (user1)! Refresh list...");
+          lastFetchTimeRef.current = 0;
+          refreshState();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'matches',
+          filter: `user2_id=eq.${userId}`, // Trường hợp mình là user2
+        },
+        () => {
+          console.log("🔔 Có Match mới (user2)! Refresh list...");
+          lastFetchTimeRef.current = 0;
+          refreshState();
+        }
+      )
+      .subscribe();
 
-    const handleEvent = async (event: StreamEvent) => {
-      // Chỉ refresh khi có tin nhắn mới (bất kể của ai để cập nhật Last Message) hoặc notification
+    // --- PHẦN CŨ: LẮNG NGHE STREAM CHAT ---
+    let streamClient: StreamChat | null = null;
+
+    const handleStreamEvent = async () => {
+      // Refresh khi có tin nhắn mới để cập nhật "Last Message"
       lastFetchTimeRef.current = 0;
       await refreshState();
     };
 
     const setupListeners = async () => {
-      client = await getGlobalStreamClient();
-      if (!client || !isMountedRef.current) return;
+      streamClient = await getGlobalStreamClient();
+      if (!streamClient || !isMountedRef.current) return;
 
-      client.on('notification.message_new', handleEvent);
-      client.on('message.new', handleEvent);
-      client.on('message.read', handleEvent);
-      client.on('notification.channel_updated', handleEvent);
+      streamClient.on('notification.message_new', handleStreamEvent);
+      streamClient.on('message.new', handleStreamEvent);
+      streamClient.on('message.read', handleStreamEvent);
+      streamClient.on('notification.channel_updated', handleStreamEvent);
 
+      // Vẫn giữ polling 30s để đề phòng mạng lag rớt gói tin realtime
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
         lastFetchTimeRef.current = 0;
@@ -248,13 +285,20 @@ export function MessageProvider({ children }: { children: ReactNode }) {
 
     setupListeners();
 
+    // CLEANUP
     return () => {
-      if (client) {
-        client.off('notification.message_new', handleEvent);
-        client.off('message.new', handleEvent);
-        client.off('message.read', handleEvent);
-        client.off('notification.channel_updated', handleEvent);
+      // 1. Hủy lắng nghe Supabase
+      supabase.removeChannel(realtimeChannel);
+
+      // 2. Hủy lắng nghe Stream Chat
+      if (streamClient) {
+        streamClient.off('notification.message_new', handleStreamEvent);
+        streamClient.off('message.new', handleStreamEvent);
+        streamClient.off('message.read', handleStreamEvent);
+        streamClient.off('notification.channel_updated', handleStreamEvent);
       }
+
+      // 3. Xóa interval
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [userId, refreshState]);
