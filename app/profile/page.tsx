@@ -168,7 +168,7 @@ export default function ProfilePage() {
                                             <p className="text-pink-600 dark:text-pink-400 font-bold">@{profile.username}</p>
                                         </div>
 
-                                        <Link href="/profile/edit" className="inline-flex items-center justify-center px-5 py-2 rounded-full bg-slate-800 text-white hover:bg-slate-900 hover:text-white dark:bg-white dark:text-slate-900 transition shadow-lg hover:-translate-y-0.5 transform font-medium">
+                                        <Link href="/profile/edit" className="inline-flex items-center justify-center px-5 py-2 rounded-full bg-slate-800 text-white hover:bg-slate-900 hover:text-white dark:bg-white dark:text-slate-900 transition shadow-lg hover:-translate-y-0.5 transform font-medium whitespace-nowrap">
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                             Chỉnh sửa
                                         </Link>
@@ -190,8 +190,8 @@ export default function ProfilePage() {
                                                 ✅ Hồ sơ hoàn chỉnh
                                             </span>
                                         )}
-                                        <span className="px-3 py-1 rounded-lg bg-white/60 dark:bg-gray-700/50 text-slate-700 text-xs font-semibold shadow-sm">
-                                            Tham gia {new Date(profile.created_at).toLocaleDateString()}
+                                        <span className="px-3 py-1 rounded-lg bg-white/60 dark:bg-gray-700/50 text-white text-xs font-semibold shadow-sm">
+                                            Tham gia: {new Date(profile.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
                                 </div>
