@@ -261,8 +261,9 @@ export default function MatchesPage() {
       try {
         const result = await likeUser(likedUser.id);
         if (result.isMatch && result.matchedUser) {
-          setMatchedUser(result.matchedUser as UserProfile);
-          setShowMatchNotification(true);
+          // setMatchedUser(result.matchedUser as UserProfile);
+          // setShowMatchNotification(true);
+          console.log("Match! Đợi Realtime Global Popup hiện...");
         }
         setCurrentIndex((prev) => prev + 1);
       } catch (err) {
