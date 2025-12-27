@@ -24,6 +24,7 @@ interface VideoCallProps {
   isIncoming?: boolean;
   otherUserId?: string;
   showWaitingForParticipant?: boolean;
+  isAcceptedCall?: boolean;
 }
 
 export default function VideoCall({
@@ -31,6 +32,7 @@ export default function VideoCall({
   onCallEnd,
   isIncoming = false,
   showWaitingForParticipant = false,
+  isAcceptedCall = false,
 }: VideoCallProps) {
   const [client, setClient] = useState<StreamVideoClient | null>(null);
   const [call, setCall] = useState<Call | null>(null);
@@ -185,6 +187,18 @@ export default function VideoCall({
     return null;
   }
 
+  // Wait for both participants to join before showing the video interface
+  if (participantCount < 2) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p className="text-lg">Đang chờ người tham gia...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden">
       {/* Custom CSS to keep only microphone, camera, and hang up buttons */}
@@ -212,9 +226,9 @@ export default function VideoCall({
                   <CancelCallButton
                     onClick={async () => {
                       // Send call end message before ending call
-                      if ((window as any).sendCallEndMessage) {
+                      if (window.sendCallEndMessage) {
                         try {
-                          await (window as any).sendCallEndMessage();
+                          await window.sendCallEndMessage();
                         } catch (error) {
                           console.error("Error sending call end message:", error);
                         }
@@ -233,38 +247,6 @@ export default function VideoCall({
           </StreamTheme>
         </StreamCall>
       </StreamVideo>
-
-      {/* Waiting for other participant - show for outgoing calls with only 1 participant */}
-      {!isIncoming && participantCount < 2 && (
-        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60]">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm mx-4 shadow-2xl text-center">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Đang chờ người tham gia
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Vui lòng đợi trong giây lát...
-            </p>
-            <div className="flex space-x-2 justify-center mb-4">
-              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-            </div>
-            <button
-              onClick={onCallEnd}
-              className="bg-gray-700 text-white font-semibold py-2 px-6 rounded-full hover:bg-gray-600 transition-all"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
-
-
     </div>
   );
 }

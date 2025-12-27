@@ -1,9 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { StreamChat, Event } from "stream-chat";
+import { StreamChat, Event, Channel } from "stream-chat";
 import { getStreamUserToken } from "@/lib/actions/stream";
 import VideoCall from "./VideoCall";
+
+declare global {
+  interface Window {
+    globalCallManager?: {
+      initiateCall: (callId: string, calleeName: string) => void;
+      handleCallerVideoCall: (callId: string) => void;
+      handleOutgoingCallAccepted: (callId?: string) => void;
+      handleOutgoingCallDeclined: () => void;
+    };
+    currentChatChannel?: Channel;
+    sendCallEndMessage?: () => Promise<void>;
+  }
+}
 
 // Interface cho dữ liệu cuộc gọi đính kèm trong tin nhắn
 interface VideoCallCustomData extends Record<string, unknown> {
@@ -37,6 +50,7 @@ export default function GlobalCallManager() {
   const [showCallEnded, setShowCallEnded] = useState(false);
 
   const [client, setClient] = useState<StreamChat | null>(null);
+  const [updateCounter, setUpdateCounter] = useState(0);
 
   useEffect(() => {
     let chatClient: StreamChat | null = null;
@@ -118,7 +132,7 @@ export default function GlobalCallManager() {
 
   const handleAcceptCall = async () => {
     // Use the shared channel from StreamChatInterface
-    const channel = (window as any).currentChatChannel;
+    const channel = window.currentChatChannel;
 
     if (channel && incomingCallId) {
       try {
@@ -150,7 +164,7 @@ export default function GlobalCallManager() {
 
   const handleDeclineCall = async () => {
     // Use the shared channel from StreamChatInterface
-    const channel = (window as any).currentChatChannel;
+    const channel = window.currentChatChannel;
 
     if (channel && incomingCallId) {
       try {
@@ -186,7 +200,7 @@ export default function GlobalCallManager() {
 
   const handleCancelOutgoingCall = async () => {
     // Send call cancelled message to sync with receiver
-    const channel = (window as any).currentChatChannel;
+    const channel = window.currentChatChannel;
     if (channel && outgoingCallId) {
       try {
         const currentUserId = client?.userID!;
@@ -216,6 +230,7 @@ export default function GlobalCallManager() {
       setShowActiveCall(true);
       setOutgoingCallId("");
       setCalleeName("");
+      setUpdateCounter(prev => prev + 1); // Force re-render
     }
   };
 
@@ -252,14 +267,14 @@ export default function GlobalCallManager() {
 
   // Expose functions to window for global access
   useEffect(() => {
-    (window as any).globalCallManager = { 
-      initiateCall, 
+    window.globalCallManager = {
+      initiateCall,
       handleCallerVideoCall,
       handleOutgoingCallAccepted,
       handleOutgoingCallDeclined,
     };
     return () => {
-      delete (window as any).globalCallManager;
+      delete window.globalCallManager;
     };
   }, []);
 
@@ -355,6 +370,7 @@ export default function GlobalCallManager() {
             onCallEnd={handleCallEnd}
             isIncoming={!showOutgoingCall} // If it was an outgoing call that got accepted, it's not incoming
             otherUserId={callerName || calleeName}
+            isAcceptedCall={true}
           />
         </div>
       )}
