@@ -139,14 +139,14 @@ export async function getPotentialMatches(): Promise<UserProfile[]> {
   });
 }
 
-// 2. THỰC HIỆN LIKE USER
+//  THỰC HIỆN LIKE USER
 export async function likeUser(toUserId: string) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) throw new Error("Not authenticated.");
+  if (!user) throw new Error("Bạn chưa đăng nhập.");
 
   // A. Insert vào bảng Likes
   // Trigger trong DB sẽ tự động tạo row trong bảng 'matches' nếu match

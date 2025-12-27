@@ -39,8 +39,7 @@ export interface UserProfile {
     created_at: string;
 }
 
-// FIX: Mở rộng interface này để bao gồm TẤT CẢ các trường có thể update
-// Điều này giúp bạn không cần dùng 'as any' ở các hàm khác
+
 interface UserTableUpdate {
     full_name?: string;
     username?: string;
@@ -116,7 +115,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     };
 }
 
-// --- HÀM SET ONLINE (KHÔNG DÙNG ANY) ---
+// --- HÀM SET ONLINE  ---
 export async function setUserOnlineStatus(isOnline: boolean) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -131,7 +130,7 @@ export async function setUserOnlineStatus(isOnline: boolean) {
     await supabase.from("users").update(updates).eq("id", user.id);
 }
 
-// --- HÀM VERIFY (KHÔNG DÙNG ANY) ---
+// --- HÀM VERIFY  ---
 export async function markUserAsVerified() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -146,7 +145,7 @@ export async function markUserAsVerified() {
 }
 
 
-// --- THÊM HÀM NÀY VÀO CUỐI FILE HOẶC DƯỚI getCurrentUserProfile ---
+// --- Hàm lấy danh sách userprofile---
 
 export async function getUserProfileById(userId: string): Promise<UserProfile | null> {
     const supabase = await createClient();
@@ -193,7 +192,7 @@ export async function getUserProfileById(userId: string): Promise<UserProfile | 
     };
 }
 
-// --- HÀM UPDATE PROFILE CHÍNH (ĐÃ SỬA LỖI LOGIC) ---
+// --- HÀM UPDATE PROFILE CHÍNH 
 export async function updateUserProfile(profileData: Partial<UserProfile>) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -205,8 +204,7 @@ export async function updateUserProfile(profileData: Partial<UserProfile>) {
     const hasLocation = (!!profileData.latitude && !!profileData.longitude) || !!profileData.display_address;
     const hasBio = !!profileData.bio;
 
-    // FIX LOGIC ẢNH: Chỉ cần có Avatar HOẶC có ảnh trong thư viện là tính đã có ảnh
-    // Code cũ bắt buộc phải có ảnh thư viện profileData.photos
+
     const hasPhoto = !!profileData.avatar_url || (profileData.photos && profileData.photos.length > 0);
 
     // Điều kiện hoàn thành:
@@ -216,7 +214,7 @@ export async function updateUserProfile(profileData: Partial<UserProfile>) {
     const userUpdates: UserTableUpdate = {
         full_name: profileData.full_name,
         username: profileData.username,
-        bio: profileData.bio || null, // Chuyển undefined thành null cho Supabase
+        bio: profileData.bio || null,
         gender: profileData.gender,
         birthdate: profileData.birthdate,
         avatar_url: profileData.avatar_url || null,
@@ -286,13 +284,12 @@ export async function uploadProfilePhoto(file: File, bucketName: "avatars" | "pr
     return { success: true, url: publicUrl };
 }
 
-export async function updateUserPreferences(newPreferences: Record<string, any>) {
+export async function updateUserPreferences(newPreferences: Record<string, unknown>) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) return { success: false, error: "User not authenticated" };
 
-    // Chỉ update cột preferences, giữ nguyên các cột khác
     const { error } = await supabase
         .from("users")
         .update({

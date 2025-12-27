@@ -1,13 +1,15 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from "react";
 import { getGlobalStreamClient } from "@/lib/stream-chat-client";
 import { ChannelFilters, ChannelOptions, ChannelSort, Event as StreamEvent, StreamChat, Channel } from "stream-chat";
 import { useAuth } from "./auth-context";
 import { UserProfile } from "@/lib/actions/profile";
-import { getUserMatches } from "@/lib/actions/matches"; // Import action lấy matches
+import { getUserMatches } from "@/lib/actions/matches";
+import { getUserProfileById } from "@/lib/actions/profile"; // Đảm bảo import hàm này
 
-// Định nghĩa Interface dữ liệu Chat ngay tại Context để dùng chung
+// Định nghĩa Interface dữ liệu Chat
 export interface ChatData {
   id: string; // Match ID
   user: UserProfile;
@@ -21,11 +23,33 @@ export interface ChatData {
 interface MessageContextType {
   unreadCount: number;
   unreadByChannel: Record<string, number>;
-  chatList: ChatData[]; // Thêm danh sách chat vào Context
-  isLoadingChats: boolean; // Trạng thái loading
+  chatList: ChatData[];
+  isLoadingChats: boolean;
   markAsRead: (channelId: string) => void;
-  refreshState: () => Promise<void>; // Đổi tên từ refreshUnreadCount thành refreshState cho đúng nghĩa
+  refreshState: () => Promise<void>;
   user: UserProfile | null;
+
+  // --- MỚI THÊM: State cho Popup Match ---
+  latestMatch: UserProfile | null;
+  clearLatestMatch: () => void;
+}
+// Định nghĩa cấu trúc 1 dòng trong bảng 'matches'
+interface MatchRow {
+  id: string;
+  user1_id: string;
+  user2_id: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface RealtimeMatchPayload {
+  new: MatchRow;          // Dữ liệu dòng mới
+  old: MatchRow | null;   // Dữ liệu dòng cũ
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: string;
+  table: string;
+  commit_timestamp: string;
+  errors: null | { message: string; code?: string }[];
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -50,9 +74,12 @@ export function MessageProvider({ children }: { children: ReactNode }) {
   // State
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [unreadByChannel, setUnreadByChannel] = useState<Record<string, number>>({});
-  const [chatList, setChatList] = useState<ChatData[]>([]); // State mới: Danh sách chat
-  const [isLoadingChats, setIsLoadingChats] = useState<boolean>(true); // State loading
+  const [chatList, setChatList] = useState<ChatData[]>([]);
+  const [isLoadingChats, setIsLoadingChats] = useState<boolean>(true);
   const [dataOwnerId, setDataOwnerId] = useState<string | null>(null);
+
+  // --- MỚI THÊM: State lưu Match mới nhất để hiện Popup ---
+  const [latestMatch, setLatestMatch] = useState<UserProfile | null>(null);
 
   // Refs
   const isMountedRef = useRef<boolean>(true);
@@ -78,7 +105,6 @@ export function MessageProvider({ children }: { children: ReactNode }) {
       await channel.markRead();
 
       if (isMountedRef.current) {
-        // Optimistic Update: Cập nhật UI ngay lập tức
         setUnreadByChannel((prev) => {
           const newUnread = { ...prev };
           delete newUnread[channelId];
@@ -87,7 +113,6 @@ export function MessageProvider({ children }: { children: ReactNode }) {
           return newUnread;
         });
 
-        // Cập nhật lại chatList local để xóa chấm đỏ ngay
         setChatList(prevList =>
           prevList.map(chat =>
             chat.channelId === channelId ? { ...chat, unreadCount: 0 } : chat
@@ -99,12 +124,15 @@ export function MessageProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const clearLatestMatch = useCallback(() => {
+    setLatestMatch(null);
+  }, []);
+
   // --- HÀM FETCH TOÀN DIỆN (Matches + Stream Data) ---
   const refreshState = useCallback(async () => {
     if (!userId) return;
 
     const now = Date.now();
-    // Throttle 2s để tránh spam request
     if (isFetchingRef.current || (now - lastFetchTimeRef.current < 2000)) {
       return;
     }
@@ -112,16 +140,13 @@ export function MessageProvider({ children }: { children: ReactNode }) {
     try {
       isFetchingRef.current = true;
 
-      // 1. Lấy danh sách Matches từ DB
       const userMatches = await getUserMatches();
-
       const client = await getGlobalStreamClient();
       if (!client) {
         isFetchingRef.current = false;
         return;
       }
 
-      // 2. Chuẩn bị IDs để query Stream
       const channelIds: string[] = [];
       userMatches.forEach(match => {
         channelIds.push(generateChannelId(userId, match.id));
@@ -129,7 +154,6 @@ export function MessageProvider({ children }: { children: ReactNode }) {
 
       let streamChannels: Channel[] = [];
 
-      // 3. Query Stream Chat (chỉ 1 request duy nhất)
       if (channelIds.length > 0) {
         const filters: ChannelFilters = { type: 'messaging', id: { $in: channelIds } };
         const sort: ChannelSort = { last_message_at: -1 };
@@ -137,7 +161,6 @@ export function MessageProvider({ children }: { children: ReactNode }) {
         streamChannels = await client.queryChannels(filters, sort, options);
       }
 
-      // 4. Xử lý dữ liệu (Mapping Matches + Stream Info)
       let totalUnread = 0;
       const unreadMap: Record<string, number> = {};
 
@@ -151,26 +174,19 @@ export function MessageProvider({ children }: { children: ReactNode }) {
         let unread = 0;
 
         if (streamChannel) {
-          // Lấy unread count
           unread = streamChannel.countUnread();
           if (unread > 0) {
             unreadMap[channelId] = unread;
             totalUnread += unread;
           }
 
-          // Lấy tin nhắn cuối
           if (streamChannel.state.messages.length > 0) {
             const messages = streamChannel.state.messages;
             const lastMsg = messages[messages.length - 1];
 
-            if (lastMsg.text) {
-              lastMessageText = lastMsg.text;
-            } else if (lastMsg.attachments && lastMsg.attachments.length > 0) {
-              lastMessageText = "Đã gửi một tệp đính kèm";
-            }
-            if (lastMsg.deleted_at) {
-              lastMessageText = "Tin nhắn đã bị thu hồi";
-            }
+            if (lastMsg.text) lastMessageText = lastMsg.text;
+            else if (lastMsg.attachments?.length) lastMessageText = "Đã gửi một tệp đính kèm";
+            if (lastMsg.deleted_at) lastMessageText = "Tin nhắn đã bị thu hồi";
 
             lastMessageTime = lastMsg.created_at
               ? (typeof lastMsg.created_at === 'string' ? lastMsg.created_at : lastMsg.created_at.toISOString())
@@ -191,7 +207,6 @@ export function MessageProvider({ children }: { children: ReactNode }) {
         };
       });
 
-      // Sắp xếp theo thời gian mới nhất
       processedChatList.sort((a, b) =>
         new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
       );
@@ -201,7 +216,7 @@ export function MessageProvider({ children }: { children: ReactNode }) {
         setUnreadCount(totalUnread);
         setChatList(processedChatList);
         setDataOwnerId(userId);
-        setIsLoadingChats(false); // Đã tải xong
+        setIsLoadingChats(false);
         lastFetchTimeRef.current = Date.now();
       }
 
@@ -223,22 +238,71 @@ export function MessageProvider({ children }: { children: ReactNode }) {
     lastFetchTimeRef.current = 0;
     refreshState();
 
-    let client: StreamChat | null = null;
+    const supabase = createClient();
 
-    const handleEvent = async (event: StreamEvent) => {
-      // Chỉ refresh khi có tin nhắn mới (bất kể của ai để cập nhật Last Message) hoặc notification
+    // --- HÀM XỬ LÝ KHI CÓ MATCH MỚI ---
+    const handleNewMatch = async (payload: RealtimeMatchPayload) => {
+      console.log("🔔 Realtime Match Event:", payload);
+
+      // TypeScript hiểu 'newRecord' là MatchRow
+      const newRecord = payload.new;
+
+      // ... logic giữ nguyên ...
+      lastFetchTimeRef.current = 0;
+      await refreshState();
+
+      const partnerId = newRecord.user1_id === userId ? newRecord.user2_id : newRecord.user1_id;
+
+      if (partnerId) {
+        try {
+          const partnerProfile = await getUserProfileById(partnerId);
+          // Kiểm tra isMountedRef.current để tránh set state khi component đã unmount
+          if (partnerProfile && isMountedRef.current) {
+            setLatestMatch(partnerProfile);
+          }
+        } catch (err) {
+          // Ép kiểu error sang Error hoặc unknown để log an toàn
+          console.error("Lỗi lấy thông tin match mới:", err instanceof Error ? err.message : "Unknown error");
+        }
+      }
+    };
+    const realtimeChannel = supabase.channel('realtime-matches-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'matches',
+          filter: `user1_id=eq.${userId}`,
+        },
+        (payload) => handleNewMatch(payload as unknown as RealtimeMatchPayload))
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'matches',
+          filter: `user2_id=eq.${userId}`,
+        },
+        (payload) => handleNewMatch(payload as unknown as RealtimeMatchPayload))
+      .subscribe();
+
+    // --- STREAM CHAT LISTENERS ---
+    let streamClient: StreamChat | null = null;
+
+    const handleStreamEvent = async () => {
       lastFetchTimeRef.current = 0;
       await refreshState();
     };
 
     const setupListeners = async () => {
-      client = await getGlobalStreamClient();
-      if (!client || !isMountedRef.current) return;
+      streamClient = await getGlobalStreamClient();
+      if (!streamClient || !isMountedRef.current) return;
 
-      client.on('notification.message_new', handleEvent);
-      client.on('message.new', handleEvent);
-      client.on('message.read', handleEvent);
-      client.on('notification.channel_updated', handleEvent);
+      streamClient.on('notification.message_new', handleStreamEvent);
+      streamClient.on('message.new', handleStreamEvent);
+      streamClient.on('message.read', handleStreamEvent);
+      streamClient.on('notification.channel_updated', handleStreamEvent);
 
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
@@ -250,12 +314,15 @@ export function MessageProvider({ children }: { children: ReactNode }) {
     setupListeners();
 
     return () => {
-      if (client) {
-        client.off('notification.message_new', handleEvent);
-        client.off('message.new', handleEvent);
-        client.off('message.read', handleEvent);
-        client.off('notification.channel_updated', handleEvent);
+      supabase.removeChannel(realtimeChannel);
+
+      if (streamClient) {
+        streamClient.off('notification.message_new', handleStreamEvent);
+        streamClient.off('message.new', handleStreamEvent);
+        streamClient.off('message.read', handleStreamEvent);
+        streamClient.off('notification.channel_updated', handleStreamEvent);
       }
+
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [userId, refreshState]);
@@ -271,11 +338,15 @@ export function MessageProvider({ children }: { children: ReactNode }) {
       value={{
         unreadCount: exposedUnreadCount,
         unreadByChannel: (user && isDataFresh) ? unreadByChannel : {},
-        chatList: exposedChatList, // Expose danh sách chat
-        isLoadingChats: exposedLoading, // Expose loading state
+        chatList: exposedChatList,
+        isLoadingChats: exposedLoading,
         markAsRead,
         refreshState,
         user: user as UserProfile | null,
+
+        // Expose state mới
+        latestMatch,
+        clearLatestMatch,
       }}
     >
       {children}

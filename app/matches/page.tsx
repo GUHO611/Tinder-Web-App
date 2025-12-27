@@ -126,7 +126,7 @@ export default function MatchesPage() {
     setSavingSettings(true);
     try {
       // Gọi Server Action cập nhật profile
-      await updateUserPreferences(preferences);
+      await updateUserPreferences(preferences as unknown as Record<string, unknown>);
 
       setShowSettings(false);
       // Gọi lại hàm loadUsers để lấy danh sách mới theo filter mới
@@ -261,8 +261,9 @@ export default function MatchesPage() {
       try {
         const result = await likeUser(likedUser.id);
         if (result.isMatch && result.matchedUser) {
-          setMatchedUser(result.matchedUser as UserProfile);
-          setShowMatchNotification(true);
+          // setMatchedUser(result.matchedUser as UserProfile);
+          // setShowMatchNotification(true);
+          console.log("Match! Đợi Realtime Global Popup hiện...");
         }
         setCurrentIndex((prev) => prev + 1);
       } catch (err) {
@@ -437,8 +438,8 @@ export default function MatchesPage() {
                             value === "male"
                               ? "Nam"
                               : value === "female"
-                              ? "Nữ"
-                              : "Khác"
+                                ? "Nữ"
+                                : "Khác"
                           }
                         />
                       ))}

@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { MessageProvider } from "@/contexts/message-context";
 import Navbar from "@/components/Navbar";
 import GlobalCallManager from "@/components/GlobalCallManager";
+import GlobalMatchNotifier from "@/components/GlobalMatchNotifier";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["vietnamese"],
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className={`${beVietnamPro.className} antialiased`}>
         <AuthProvider>
           <MessageProvider>
+            <GlobalMatchNotifier />
             {/* XÓA pt-20 Ở ĐÂY. Để layout tràn màn hình */}
             <div className="flex flex-col min-h-screen relative">
               <Navbar />

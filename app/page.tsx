@@ -126,16 +126,21 @@ export default function LandingPage() {
       }
 
       // 3. FEATURES SCROLL TRIGGER
-      gsap.from(".feature-card", {
+      gsap.set(".feature-card", { opacity: 0, y: 50 });
+
+      gsap.to(".feature-card", {
         scrollTrigger: {
           trigger: ".features-section",
-          start: "top 80%",
+          start: "top 80%", // Khi đỉnh section cách top màn hình 80%
           toggleActions: "play none none reverse",
         },
-        y: 100,
-        opacity: 0,
+        opacity: 1,
+        y: 0,
         duration: 0.8,
         stagger: 0.2,
+        ease: "power2.out",
+        immediateRender: false, // Ngăn chặn việc render lỗi trước khi cuộn
+        clearProps: "all", // Xóa style sau khi xong để hover CSS hoạt động
       });
 
       // 4. STATS COUNTER
@@ -144,7 +149,6 @@ export default function LandingPage() {
           trigger: ".stats-section",
           start: "top 85%",
         },
-        // textContent: 0,
         duration: 2,
         ease: "power1.out",
         snap: { textContent: 1 },
@@ -368,66 +372,75 @@ export default function LandingPage() {
           </div>
 
           <Grid container spacing={4} className="features-container">
-  {FEATURES.map((feature, idx) => (
-    <Grid 
-      key={idx}
-      size={{ xs: 12, md: 4 }} 
-      sx={{ display: 'flex' }}
-    >
-      <div
-        className={`
-          feature-card w-full p-10 rounded-[48px] relative overflow-hidden cursor-pointer transition-all duration-500 border group
-          /* Light Mode: Nền xám cực nhẹ, viền rõ hơn */
-          bg-slate-100/70 border-slate-200 
-          /* Dark Mode: Nền tối trong suốt, viền mờ */
-          dark:bg-white/5 dark:border-white/10 dark:backdrop-blur-xl
-        `}
-        style={{ 
-          transformStyle: "preserve-3d",
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minHeight: '320px'
-        }}
-      >
-        {/* Lớp phản quang - Tăng độ đậm ở Light Mode để thấy rõ hơn */}
-        <div 
-          className="glow-overlay absolute w-[300px] h-[300px] rounded-full blur-[80px] pointer-events-none opacity-0" 
-          style={{ 
-            background: `radial-gradient(circle, ${feature.color}66 0%, transparent 70%)`,
-            zIndex: 0 
-          }} 
-        />
+            {FEATURES.map((feature, idx) => (
+              <Grid key={idx} size={{ xs: 12, md: 4 }} sx={{ display: "flex" }}>
+                <div
+                  className={`
+    feature-card w-full p-10 rounded-[48px] relative overflow-hidden cursor-pointer transition-all duration-700 border group
+    /* Light Mode: Đậm hơn - nền opaque hơn, viền rõ ràng */
+    bg-slate-200/80 border-slate-300 hover:border-slate-400
+    /* Dark Mode: Sáng hơn - nền trắng mờ nhiều hơn, viền sáng nhẹ */
+    dark:bg-white/12 dark:border-white/20 dark:hover:border-white/30 dark:backdrop-blur-xl
+    hover:shadow-2xl hover:shadow-[${feature.color}]/30
+  `}
+                  style={{
+                    transformStyle: "preserve-3d",
+                    display: "flex",
+                    flexDirection: "column",
+                    flex: 1,
+                    minHeight: "320px",
+                  }}
+                >
+                  {/* Glow overlay - Đậm hơn ở light, sáng hơn ở dark khi hover */}
+                  <div
+                    className="glow-overlay absolute w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000"
+                    style={{
+                      background: `radial-gradient(circle, ${feature.color}aa 0%, ${feature.color}44 50%, transparent 80%)`,
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      zIndex: 0,
+                    }}
+                  />
 
-        <div className="relative z-10">
-          {/* Icon Box - Tăng độ đậm nền ở Light Mode */}
-          <div 
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6
-            border-slate-200 dark:border-white/10"
-            style={{ 
-              color: feature.color, 
-              // Dùng opacity cao hơn một chút cho Light mode
-              backgroundColor: `${feature.color}25` 
-            }}
-          >
-            {feature.icon}
-          </div>
+                  <div className="relative z-10">
+                    {/* Icon Box - Light: đậm hơn, Dark: sáng hơn */}
+                    <div
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border transition-all duration-500 group-hover:scale-125 group-hover:rotate-12 group-hover:shadow-xl"
+                      style={{
+                        color: feature.color,
+                        // Light: nền đậm hơn, Dark: nền sáng hơn
+                        backgroundColor: `${feature.color}40`,
+                        borderColor: `${feature.color}60`,
+                        boxShadow: "0 4px 30px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      {feature.icon}
+                    </div>
 
-          {/* Tiêu đề - Chuyển màu linh hoạt */}
-          <h3 className="text-2xl font-black mb-4 transition-colors
-            text-slate-900 dark:text-white group-hover:text-pink-500">
-            {feature.title}
-          </h3>
+                    {/* Tiêu đề - Chuyển màu mượt khi hover sang feature.color */}
+                    <h3
+                      className="text-2xl font-black mb-4 transition-all duration-500 group-hover:scale-105"
+                      style={{
+                        color: "inherit",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.color = feature.color)
+                      }
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+                    >
+                      {feature.title}
+                    </h3>
 
-          {/* Mô tả - Chuyển màu linh hoạt */}
-          <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-lg">
-            {feature.desc}
-          </p>
-        </div>
-      </div>
-    </Grid>
-  ))}
-</Grid>
+                    {/* Mô tả - Tăng độ tương phản phù hợp với mode */}
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-lg transition-all duration-500 group-hover:text-slate-900 dark:group-hover:text-slate-100 group-hover:translate-y-[-4px]">
+                      {feature.desc}
+                    </p>
+                  </div>
+                </div>
+              </Grid>
+            ))}
+          </Grid>
         </Container>
       </section>
 
@@ -499,8 +512,11 @@ export default function LandingPage() {
           sx={{ position: "relative", zIndex: 10, textAlign: "center" }}
         >
           {/* Badge nhỏ */}
-          <div className="inline-block px-6 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md mb-8">
-            <span className="text-pink-300 font-bold tracking-widest uppercase text-sm">
+          <div className="inline-flex items-center px-5 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md mb-8">
+            {/* Chấm tròn nhịp tim */}
+            <span className="h-2.5 w-2.5 rounded-full bg-pink-500 animate-pulse mr-2 shadow-[0_0_8px_rgba(236,72,153,0.8)]"></span>
+
+            <span className="text-pink-200 font-bold tracking-widest uppercase text-xs sm:text-sm">
               Cơ hội đang chờ
             </span>
           </div>
@@ -519,8 +535,28 @@ export default function LandingPage() {
           >
             Đừng để cô đơn
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-yellow-500">
-              thêm một ngày.
+            <span className="relative">
+              <style jsx>{`
+                @keyframes gradient-move {
+                  0% {
+                    background-position: 0% 50%;
+                  }
+                  50% {
+                    background-position: 100% 50%;
+                  }
+                  100% {
+                    background-position: 0% 50%;
+                  }
+                }
+                .animate-gradient {
+                  background-size: 200% auto;
+                  animation: gradient-move 3s linear infinite;
+                }
+              `}</style>
+
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-500 to-yellow-500 animate-gradient font-bold">
+                thêm một ngày.
+              </span>
             </span>
           </Typography>
 
